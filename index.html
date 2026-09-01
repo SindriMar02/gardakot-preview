@@ -26,7 +26,7 @@
      is Airbnb's, supplied 2026-09-01. Photographs are the owner's own, from that listing;
      assets/img/manifest.json records the source URL and true size of each. -->
 
-<link rel="stylesheet" href="styles.css?v=cae0290a">
+<link rel="stylesheet" href="styles.css?v=ae12b963">
 </head>
 <body data-ground="dawn">
 
@@ -142,91 +142,82 @@
     </figure>
   </section>
 
-  <!-- ═══ ROOMS — the project picker: one frame, four views ═══
-       Desktop docks every .rshot into the sticky frame and peels between them.
-       Below 1024px the shots move back beside their own text — Búðir's own fork. -->
+  <!-- ═══ ROOMS — expanding cards ═══
+       Mechanism transplanted from 21st.dev "Expanding Cards" (vaib215): one grid, tracks
+       5fr/1fr/1fr/1fr transitioned on grid-template-columns (rows below 768px); the open
+       card's photograph un-scales and un-greys, closed cards carry a rotated label, the
+       open one fades its text in with a stagger. Hover, focus or tap opens a card. -->
   <section class="rooms" id="rooms" data-ground="night">
     <div class="wrap sechead" data-reveal>
       <span class="rule" data-rule></span>
       <p class="sechead_l">The four windows</p><p class="sechead_n">(01)</p>
     </div>
-
-    <div class="wrap rooms_stage" id="roomsStage">
-      <div class="rooms_media" aria-hidden="true">
-        <div class="rooms_frame" id="roomsFrame">
-          <span class="rooms_face" id="roomsFace"><i>South</i></span>
-        </div>
-        <nav class="rooms_ticks" id="roomsTicks">
-          <button class="rtick" type="button" data-tick="0"><span>01</span></button>
-          <button class="rtick" type="button" data-tick="1"><span>02</span></button>
-          <button class="rtick" type="button" data-tick="2"><span>03</span></button>
-          <button class="rtick" type="button" data-tick="3"><span>04</span></button>
-        </nav>
-      </div>
-
-      <div class="rooms_read">
-      <article class="rread" data-read="0">
-        <figure class="rshot" data-shot="0">
-          <picture>
-            <source media="(max-width: 1023px)" srcset="assets/img/bed-grey-p.webp">
-            <img src="assets/img/bed-grey-md.webp" srcset="assets/img/bed-grey-sm.webp 1000w, assets/img/bed-grey-md.webp 1400w, assets/img/bed-grey-lg.webp 2000w, assets/img/bed-grey.webp 2560w" sizes="(max-width: 1023px) 100vw, 52vw" alt="Room one at Garðakot, a made bed on a wooden floor" loading="lazy">
-          </picture>
-        </figure>
-        <div class="rread_txt">
-          <p class="rread_n"><i>01</i><span>/ 04</span></p>
-          <h3 class="rread_name">Room one</h3>
-          <p class="rread_wing">Downstairs · private bathroom</p>
-          <p class="rread_view">Looking south, with floor heating underfoot.</p>
-          <a class="pill" href="#book">Book this room</a>
-        </div>
-      </article>
-      <article class="rread" data-read="1">
-        <figure class="rshot" data-shot="1">
-          <picture>
-            <source media="(max-width: 1023px)" srcset="assets/img/bed-window-p.webp">
-            <img src="assets/img/bed-window-md.webp" srcset="assets/img/bed-window-sm.webp 1000w, assets/img/bed-window-md.webp 1400w, assets/img/bed-window-lg.webp 2000w, assets/img/bed-window.webp 2560w" sizes="(max-width: 1023px) 100vw, 52vw" alt="Room two at Garðakot, a bed beside a window on the lower floor" loading="lazy">
-          </picture>
-        </figure>
-        <div class="rread_txt">
-          <p class="rread_n"><i>02</i><span>/ 04</span></p>
-          <h3 class="rread_name">Room two</h3>
-          <p class="rread_wing">Lower floor · private bathroom</p>
-          <p class="rread_view">Quiet, warm, and the easiest room in the house to sleep late in.</p>
-          <a class="pill" href="#book">Book this room</a>
-        </div>
-      </article>
-      <article class="rread" data-read="2">
-        <figure class="rshot" data-shot="2">
-          <picture>
-            <source media="(max-width: 1023px)" srcset="assets/img/attic-double-p.webp">
-            <img src="assets/img/attic-double-md.webp" srcset="assets/img/attic-double-sm.webp 1000w, assets/img/attic-double-md.webp 1400w, assets/img/attic-double-lg.webp 2000w, assets/img/attic-double.webp 2560w" sizes="(max-width: 1023px) 100vw, 52vw" alt="Room three at Garðakot, a bed under the eaves with a window facing west" loading="lazy">
-          </picture>
-        </figure>
-        <div class="rread_txt">
-          <p class="rread_n"><i>03</i><span>/ 04</span></p>
-          <h3 class="rread_name">Room three</h3>
-          <p class="rread_wing">Upstairs · shares with room four</p>
-          <p class="rread_view">West over the neighbouring fields to Pétursey, with Eyjafjallajökull in the distance.</p>
-          <a class="pill" href="#book">Book this room</a>
-        </div>
-      </article>
-      <article class="rread" data-read="3">
-        <figure class="rshot" data-shot="3">
-          <picture>
-            <source media="(max-width: 1023px)" srcset="assets/img/attic-antique-p.webp">
-            <img src="assets/img/attic-antique-md.webp" srcset="assets/img/attic-antique-sm.webp 1000w, assets/img/attic-antique-md.webp 1400w, assets/img/attic-antique-lg.webp 2000w, assets/img/attic-antique.webp 2560w" sizes="(max-width: 1023px) 100vw, 52vw" alt="Room four at Garðakot, under the eaves with an antique dresser and armchair" loading="lazy">
-          </picture>
-        </figure>
-        <div class="rread_txt">
-          <p class="rread_n"><i>04</i><span>/ 04</span></p>
-          <h3 class="rread_name">Room four</h3>
-          <p class="rread_wing">Second floor · shares with room three</p>
-          <p class="rread_view">Straight out at Dyrhólaey and the lighthouse.</p>
-          <a class="pill" href="#book">Book this room</a>
-        </div>
-      </article>
-      </div>
+    <div class="wrap rooms_head">
+      <h2 class="rooms_h" data-split="lines" data-reveal>The rooms</h2>
+      <p class="rooms_sub" data-reveal>Four bedrooms in one house, and each one looks at a different piece of the south coast. Open a room to see which.</p>
     </div>
+    <ul class="wrap xcards" id="xcards" data-active="0" aria-label="The four rooms">
+      <li class="xcard is-on" data-i="0" tabindex="0">
+        <picture>
+          <source media="(max-width: 767px)" srcset="assets/img/bed-grey-p.webp">
+          <img src="assets/img/bed-grey-md.webp" srcset="assets/img/bed-grey-sm.webp 1000w, assets/img/bed-grey-md.webp 1400w, assets/img/bed-grey-lg.webp 2000w, assets/img/bed-grey.webp 2560w" sizes="(max-width: 767px) 100vw, 60vw" alt="Room one at Garðakot, a made bed on a wooden floor" loading="lazy">
+        </picture>
+        <span class="xcard_tag" aria-hidden="true"><i>01</i>Room one</span>
+        <div class="xcard_body">
+          <p class="xcard_n"><i>01</i><span>/ 04</span></p>
+          <h3 class="xcard_name">Room one</h3>
+          <p class="xcard_wing">Downstairs · private bathroom</p>
+          <p class="xcard_view">Looking south, with floor heating underfoot.</p>
+          <p class="xcard_face"><span>Faces</span>South</p>
+          <a class="pill pill--light" href="#book">Book this room</a>
+        </div>
+      </li>
+      <li class="xcard" data-i="1" tabindex="0">
+        <picture>
+          <source media="(max-width: 767px)" srcset="assets/img/bed-window-p.webp">
+          <img src="assets/img/bed-window-md.webp" srcset="assets/img/bed-window-sm.webp 1000w, assets/img/bed-window-md.webp 1400w, assets/img/bed-window-lg.webp 2000w, assets/img/bed-window.webp 2560w" sizes="(max-width: 767px) 100vw, 60vw" alt="Room two at Garðakot, a bed beside a window on the lower floor" loading="lazy">
+        </picture>
+        <span class="xcard_tag" aria-hidden="true"><i>02</i>Room two</span>
+        <div class="xcard_body">
+          <p class="xcard_n"><i>02</i><span>/ 04</span></p>
+          <h3 class="xcard_name">Room two</h3>
+          <p class="xcard_wing">Lower floor · private bathroom</p>
+          <p class="xcard_view">Quiet, warm, and the easiest room in the house to sleep late in.</p>
+          <p class="xcard_face"><span>Faces</span>Lower floor</p>
+          <a class="pill pill--light" href="#book">Book this room</a>
+        </div>
+      </li>
+      <li class="xcard" data-i="2" tabindex="0">
+        <picture>
+          <source media="(max-width: 767px)" srcset="assets/img/attic-double-p.webp">
+          <img src="assets/img/attic-double-md.webp" srcset="assets/img/attic-double-sm.webp 1000w, assets/img/attic-double-md.webp 1400w, assets/img/attic-double-lg.webp 2000w, assets/img/attic-double.webp 2560w" sizes="(max-width: 767px) 100vw, 60vw" alt="Room three at Garðakot, a bed under the eaves with a window facing west" loading="lazy">
+        </picture>
+        <span class="xcard_tag" aria-hidden="true"><i>03</i>Room three</span>
+        <div class="xcard_body">
+          <p class="xcard_n"><i>03</i><span>/ 04</span></p>
+          <h3 class="xcard_name">Room three</h3>
+          <p class="xcard_wing">Upstairs · shares with room four</p>
+          <p class="xcard_view">West over the neighbouring fields to Pétursey, with Eyjafjallajökull in the distance.</p>
+          <p class="xcard_face"><span>Faces</span>Pétursey</p>
+          <a class="pill pill--light" href="#book">Book this room</a>
+        </div>
+      </li>
+      <li class="xcard" data-i="3" tabindex="0">
+        <picture>
+          <source media="(max-width: 767px)" srcset="assets/img/attic-antique-p.webp">
+          <img src="assets/img/attic-antique-md.webp" srcset="assets/img/attic-antique-sm.webp 1000w, assets/img/attic-antique-md.webp 1400w, assets/img/attic-antique-lg.webp 2000w, assets/img/attic-antique.webp 2560w" sizes="(max-width: 767px) 100vw, 60vw" alt="Room four at Garðakot, under the eaves with an antique dresser and armchair" loading="lazy">
+        </picture>
+        <span class="xcard_tag" aria-hidden="true"><i>04</i>Room four</span>
+        <div class="xcard_body">
+          <p class="xcard_n"><i>04</i><span>/ 04</span></p>
+          <h3 class="xcard_name">Room four</h3>
+          <p class="xcard_wing">Second floor · shares with room three</p>
+          <p class="xcard_view">Straight out at Dyrhólaey and the lighthouse.</p>
+          <p class="xcard_face"><span>Faces</span>Dyrhólaey</p>
+          <a class="pill pill--light" href="#book">Book this room</a>
+        </div>
+      </li>
+    </ul>
   </section>
 
   <!-- ═══ FULL BLEED II ═══ -->
@@ -418,6 +409,6 @@
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/vendor/lenis.min.js"></script>
-<script src="app.js?v=67b6e4a2"></script>
+<script src="app.js?v=d6b32857"></script>
 </body>
 </html>

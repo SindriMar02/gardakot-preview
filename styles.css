@@ -184,102 +184,80 @@ html:not(.js) .hero_wm i,.hero_wm.in i{transform:translateY(0)}
 .sechead_l,.sechead_n{font:500 .72rem/1 var(--sans);letter-spacing:.22em;text-transform:uppercase}
 .sechead_n{color:var(--g-soft)}
 
-/* ── ROOMS — one frame, four views ────────────────────────────────────────
-   Búðir's project-picker, and here it IS the concept: the house is the constant,
-   the window is the variable. Desktop docks every .rshot into the sticky frame and
-   peels between them with clip-path (never a transform — the photograph must not
-   slide, only its mask opens). Below 1024px each shot returns beside its own text
-   and reveals on entry: Búðir's own fork, a plain vertical document. */
+/* ── ROOMS — expanding cards ──────────────────────────────────────────────
+   Mechanism from 21st.dev "Expanding Cards" (vaib215), re-skinned: the grid's tracks
+   ARE the animation. 5fr/1fr/1fr/1fr on grid-template-columns, transitioned; below
+   768px the same on grid-template-rows, so the phone gets a tap-to-open stack of
+   photographs instead of four thin vertical slivers. No clip-path here: every card
+   keeps a real rendered area, so the lazy loader fires for all four (the previous
+   picker's zero-area closed shots never loaded on a normal scroll). */
 .rooms{padding-bottom:clamp(4rem,12vh,9rem)}
-.rooms_stage{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
-  gap:clamp(2rem,5vw,6rem);align-items:start}
+.rooms_head{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);
+  align-items:end;gap:clamp(1.5rem,4vw,5rem);padding-bottom:clamp(1.8rem,4.5vh,3rem)}
+.rooms_h{font:300 clamp(3.4rem,9vw,8.6rem)/.92 var(--disp);letter-spacing:-.03em}
+.rooms_sub{max-width:38ch;color:var(--g-soft);font-size:1.02rem;padding-bottom:.5rem}
 
-/* the sticky frame */
-.rooms_media{position:sticky;top:calc(var(--nav-h) + 3vh);
-  height:calc(100svh - var(--nav-h) - 9vh);display:grid;
-  grid-template-rows:1fr auto;gap:1.1rem}
-.rooms_frame{position:relative;overflow:clip;background:var(--cream2);min-height:0}
-/* DEFAULT = at home beside its own text. This must be the un-classed state: an
-   <img loading="lazy"> that is display:none at parse never resumes in Chrome, so all
-   four room photographs stayed at naturalWidth 0 on every phone. The frame is what
-   JS opts into, not the other way round. */
-.rshot{position:relative;overflow:clip;background:var(--cream2);
-  aspect-ratio:4/5;max-height:66svh;
-  clip-path:inset(0 0 100% 0);
-  transition:clip-path 1.15s var(--expo)}
-.rshot.is-on{clip-path:inset(0 0 0 0)}
-@media (min-width:1024px){
-  .rooms_stage:not(.is-flat) .rread .rshot{display:none}   /* only the docked copy shows */
-  .rooms_frame .rshot{position:absolute;inset:0;aspect-ratio:auto;max-height:none}
-  .rooms_frame .rshot:nth-of-type(even){clip-path:inset(100% 0 0 0)}  /* alternate the peel */
-  .rooms_frame .rshot.is-on{clip-path:inset(0)}
-}
-.rshot picture{display:block;height:100%}
-.rshot img{width:100%;height:100%;object-fit:cover;
-  transform:scale(1.07);transition:transform 1.6s var(--expo)}
-.rshot.is-on img{transform:scale(1)}
+.xcards{display:grid;gap:.45rem;padding:0;list-style:none;
+  height:min(72svh,46rem);
+  grid-template-rows:1fr;grid-template-columns:5fr 1fr 1fr 1fr;
+  transition:grid-template-columns .8s var(--expo)}
+.xcards[data-active="1"]{grid-template-columns:1fr 5fr 1fr 1fr}
+.xcards[data-active="2"]{grid-template-columns:1fr 1fr 5fr 1fr}
+.xcards[data-active="3"]{grid-template-columns:1fr 1fr 1fr 5fr}
 
-/* the view the active window actually faces, drawn on the frame */
-.rooms_frame::after{content:'';position:absolute;inset:auto 0 0 0;height:38%;z-index:1;
-  background:linear-gradient(to top,rgba(23,18,13,.62),rgba(23,18,13,0));
-  pointer-events:none;opacity:0;transition:opacity .6s var(--ease)}
-.rooms_frame.has-shot::after{opacity:1}      /* no scrim over the bare cream frame */
-.rooms_face{position:absolute;left:0;bottom:0;z-index:2;padding:1.4rem 1.6rem;
-  font:400 clamp(1.5rem,2.6vw,2.6rem)/1 var(--disp);color:#FBF3EA;
-  opacity:0;transition:opacity .6s var(--ease);pointer-events:none}
-.rooms_frame.has-shot .rooms_face{opacity:1}
-.rooms_face i{display:inline-block;font-style:normal;
-  transition:opacity .34s var(--ease),transform .5s var(--expo)}
-.rooms_face.is-out i{opacity:0;transform:translateY(.4em)}
+.xcard{position:relative;overflow:clip;min-width:0;min-height:0;cursor:pointer;
+  background:#241C16;outline-offset:-3px}
+.xcard picture,.xcard img{position:absolute;inset:0;width:100%;height:100%}
+.xcard img{object-fit:cover;transform:scale(1.08);filter:saturate(.45) brightness(.72);
+  transition:transform 1.1s var(--expo),filter .6s var(--ease)}
+.xcard.is-on img{transform:scale(1);filter:none}
+/* the scrim is what keeps cream text legible on a bright bedroom */
+.xcard::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(23,18,13,.82) 0%,rgba(23,18,13,.35) 45%,rgba(23,18,13,0) 75%);
+  opacity:0;transition:opacity .5s var(--ease);pointer-events:none}
+.xcard.is-on::after{opacity:1}
 
-/* ticks: four windows, the open one in the accent */
-.rooms_ticks{display:flex;gap:.4rem}
-.rtick{position:relative;flex:1;padding:.9rem 0 .45rem;text-align:left;
-  font:500 .68rem/1 var(--sans);letter-spacing:.16em;color:var(--g-soft);
-  transition:color .4s var(--ease)}
-.rtick::before{content:'';position:absolute;inset:0 0 auto 0;height:1px;background:var(--g-line)}
-.rtick::after{content:'';position:absolute;inset:0 100% auto 0;height:1px;background:var(--verm-ink);
-  transition:right 1.05s var(--expo)}
-.rtick.is-on{color:var(--verm-ink)}
-.rtick.is-on::after,.rtick.is-past::after{right:0}
-@media (hover:hover) and (pointer:fine){ .rtick:hover{color:var(--g-ink)} }
+/* closed: a rotated label, read upward */
+.xcard_tag{position:absolute;left:50%;bottom:1.5rem;z-index:2;
+  writing-mode:vertical-rl;transform:translateX(-50%) rotate(180deg);
+  display:flex;align-items:center;gap:.7rem;white-space:nowrap;
+  font:500 .68rem/1 var(--sans);letter-spacing:.18em;text-transform:uppercase;color:#F4EFE7;
+  transition:opacity .3s var(--ease)}
+.xcard_tag i{font:400 .9rem/1 var(--disp);font-style:normal;color:#FF6A3D}
+.xcard.is-on .xcard_tag{opacity:0}
 
-/* motion off (or no GSAP): the same fork the phone gets, at any width */
-.rooms_stage.is-flat{grid-template-columns:1fr;gap:0}
-.rooms_stage.is-flat .rooms_media{display:none}
-.rooms_stage.is-flat .rread{min-height:0;padding-block:clamp(2.5rem,7vh,4rem);gap:1.4rem}
-.rooms_stage.is-flat .rread .rshot{display:block;clip-path:none}
-.rooms_stage.is-flat .rread_txt{opacity:1;filter:none;max-width:none}
-
-/* the reading column */
-.rooms_read{display:grid}
-.rread{min-height:92svh;display:grid;align-content:center;
-  padding-block:clamp(1rem,4vh,3rem)}
-.rread_txt{max-width:34rem;
-  opacity:.26;filter:blur(1.2px);
-  transition:opacity .7s var(--ease),filter .7s var(--ease)}
-.rread.is-on .rread_txt{opacity:1;filter:blur(0)}
-.rread_txt{position:relative}
-.rread_txt::before{content:'';display:block;height:1px;background:var(--g-line);
-  width:0;margin-bottom:1.6rem;transition:width 1.1s var(--expo) .1s}
-.rread.is-on .rread_txt::before{width:100%}
-.rread_n{display:flex;align-items:baseline;gap:.5rem;margin-bottom:1rem}
-.rread_n i{font:400 clamp(2.6rem,5vw,4.4rem)/1 var(--disp);font-style:normal;color:var(--verm);
-  transition:color .5s var(--ease)}
-.rread.is-on .rread_n i{color:var(--verm)}
-.rread_n span{font:500 .7rem/1 var(--sans);letter-spacing:.2em;color:var(--g-soft)}
-.rread_name{font:300 clamp(2.2rem,4.6vw,3.6rem)/1.02 var(--disp);letter-spacing:-.02em;
-  margin-bottom:.7rem}
-.rread_wing{font:500 .68rem/1.4 var(--sans);letter-spacing:.15em;text-transform:uppercase;
-  color:var(--g-soft);margin-bottom:1.1rem}
-.rread_view{font-size:1.02rem;color:var(--g-soft);margin-bottom:1.8rem}
-.rread .pill{justify-self:start}
+/* open: the reading, staggered in */
+.xcard_body{position:absolute;inset:auto 0 0 0;z-index:2;padding:clamp(1.2rem,2.6vw,2.4rem);
+  color:#F4EFE7;pointer-events:none;
+  display:grid;gap:.55rem;justify-items:start;max-width:36rem}
+.xcard.is-on .xcard_body{pointer-events:auto}
+/* a closed card is an 85px track on a tablet: "Room three" at 3rem cannot break and
+   would run past the track (clipped, invisible, but still a box past the viewport) */
+.xcard_body>*{min-width:0;max-width:100%;overflow-wrap:anywhere;
+  opacity:0;transform:translateY(.6rem);
+  transition:opacity .45s var(--ease),transform .65s var(--expo)}
+.xcard.is-on .xcard_body>*{opacity:1;transform:none}
+.xcard.is-on .xcard_body>:nth-child(2){transition-delay:.08s}
+.xcard.is-on .xcard_body>:nth-child(3){transition-delay:.14s}
+.xcard.is-on .xcard_body>:nth-child(4){transition-delay:.2s}
+.xcard.is-on .xcard_body>:nth-child(5){transition-delay:.26s}
+.xcard.is-on .xcard_body>:nth-child(6){transition-delay:.32s}
+.xcard_n{display:flex;align-items:baseline;gap:.5rem}
+.xcard_n i{font:400 clamp(1.8rem,3.2vw,2.8rem)/1 var(--disp);font-style:normal;color:#FF6A3D}
+.xcard_n span{font:500 .68rem/1 var(--sans);letter-spacing:.2em;color:#C6BDB1}
+.xcard_name{font:300 clamp(1.9rem,3.6vw,3.2rem)/1.02 var(--disp);letter-spacing:-.02em}
+.xcard_wing{font:500 .66rem/1.4 var(--sans);letter-spacing:.15em;text-transform:uppercase;color:#C6BDB1}
+.xcard_view{font-size:.98rem;color:#E6DED3;max-width:34ch}
+.xcard_face{display:flex;align-items:baseline;gap:.6rem;font:400 1.05rem/1 var(--disp)}
+.xcard_face span{font:500 .62rem/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:#C6BDB1}
+.xcard_body .pill{margin-top:.6rem}
 
 .pill{display:inline-block;padding:.72rem 1.5rem;border:1px solid currentColor;border-radius:2rem;
   font:500 .72rem/1 var(--sans);letter-spacing:.13em;text-transform:uppercase;
   transition:background-color .4s var(--ease),color .4s var(--ease),border-color .4s var(--ease)}
 @media (hover:hover) and (pointer:fine){
   .pill:hover{background:var(--verm-ink);border-color:var(--verm-ink);color:#fff}
+  .xcard:not(.is-on):hover img{filter:saturate(.7) brightness(.85)}
 }
 
 /* ── THE HOUSE: their photograph, annotated ───────────────────────────────
@@ -478,15 +456,10 @@ html.js .hp_list.rev[data-armed]{transform:none}
   .foot_grid{grid-template-columns:1fr 1fr}
   .foot_legal{flex-direction:column;align-items:flex-start;gap:1.2rem}
   .bleed_fig{height:74svh}
-  /* Búðir's own fork: below 1024 the picker is a plain vertical document. The shot
-     moves back beside its own text (JS moves the node — no second download). */
-  .rooms_stage{grid-template-columns:1fr;gap:0}
-  .rooms_media{display:none}
-  .rread{min-height:0;padding-block:clamp(2.5rem,7vh,4rem);gap:1.4rem}
-
-  .rread_txt{opacity:1;filter:none;max-width:none}
-  .rread_name{margin-bottom:.5rem}
-  .rread_view{margin-bottom:1.4rem}
+  /* below 768 the cards stack and the open one takes the height: a tap-to-open
+     column of photographs, with the closed strips still readable */
+  .rooms_head{grid-template-columns:1fr;gap:.9rem;align-items:start}
+  .rooms_sub{padding-bottom:0}
 }
 @media (max-width:640px){
   .foot_grid{grid-template-columns:1fr;gap:1.6rem}
@@ -514,7 +487,26 @@ html.js .hp_list.rev[data-armed]{transform:none}
 @media (prefers-reduced-motion:reduce){
   .rw,.hero_wm i,.foot_wm i{transform:none !important}
   .rev,[data-frame] img,.spot,.hp_list li{opacity:1 !important;transform:none !important}
+  .xcards,.xcard img,.xcard_body>*,.xcard::after,.xcard_tag{transition:none !important}
   .spot_dot::after{animation:none !important;opacity:0 !important}
   .rule{transform:none !important}
   *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+
+@media (max-width:767px){
+  .xcards{height:min(84svh,42rem);gap:.4rem;
+    grid-template-columns:1fr;grid-template-rows:5fr 1fr 1fr 1fr;
+    transition:grid-template-rows .8s var(--expo)}
+  /* same specificity as the desktop [data-active="N"] rules and later in the file,
+     or those four-column tracks survive and the stack collapses into one 80px row */
+  .xcards[data-active]{grid-template-columns:1fr}
+  .xcards[data-active="1"]{grid-template-rows:1fr 5fr 1fr 1fr}
+  .xcards[data-active="2"]{grid-template-rows:1fr 1fr 5fr 1fr}
+  .xcards[data-active="3"]{grid-template-rows:1fr 1fr 1fr 5fr}
+  /* closed strips: the label reads horizontally, centred on the strip */
+  .xcard_tag{writing-mode:horizontal-tb;left:1.1rem;right:auto;bottom:auto;top:50%;
+    transform:translateY(-50%)}
+  .xcard_body{padding:1.2rem;gap:.4rem}
+  .xcard_view{font-size:.92rem}
+  .xcard_face{display:none}
 }

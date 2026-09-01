@@ -119,22 +119,51 @@
     if (s !== body && s.dataset.ground) groundIO.observe(s);
   });
 
+  /* ---------- ROOMS: expanding cards ----------
+     Mechanism from 21st.dev "Expanding Cards" (vaib215). The state is ONE attribute on
+     the list — data-active — and the grid tracks in CSS do the animating. Hover opens
+     on a fine pointer; focus and tap open everywhere. A tap on a CLOSED card opens it
+     and swallows the click, so the Book link inside is only reachable once open. */
+  (function xcards() {
+    var list = document.getElementById('xcards');
+    if (!list) return;
+    var cards = [].slice.call(list.querySelectorAll('.xcard'));
+    var fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    function open(i) {
+      if (String(i) === list.dataset.active) return;
+      list.dataset.active = i;
+      cards.forEach(function (c, k) { c.classList.toggle('is-on', k === i); });
+    }
+    cards.forEach(function (c, i) {
+      if (fine) c.addEventListener('mouseenter', function () { open(i); });
+      c.addEventListener('focus', function () { open(i); });
+      c.addEventListener('click', function (e) {
+        if (c.classList.contains('is-on')) return;      // open card: links work normally
+        e.preventDefault(); open(i);
+      });
+      c.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(i); }
+      });
+    });
+    /* every card keeps a real rendered area now, so the lazy loader fires for all four —
+       but the previous picker shipped with three photographs that never loaded, so the
+       insurance stays: wake them off the SECTION as it approaches. lazy -> eager starts
+       the load immediately. */
+    var wake = new IntersectionObserver(function (es) {
+      if (!es.some(function (e) { return e.isIntersecting; })) return;
+      list.querySelectorAll('img[loading="lazy"]').forEach(function (im) { im.loading = 'eager'; });
+      wake.disconnect();
+    }, { rootMargin: '900px 0px' });
+    wake.observe(list);
+  })();
+
   /* ---------- no-JS / reduced-motion escape ---------- */
   function showAll() {
     document.querySelectorAll('[data-split="lines"], [data-reveal]').forEach(function (el) {
       el.querySelectorAll('.rl').forEach(function (l) { l.classList.add('in'); });
       el.classList.add('in');
     });
-    /* the picker is motion — with it off, the rooms become the plain vertical
-       document they already are on a phone. Without this the frame stays empty
-       and all four texts sit at their dimmed inactive opacity. */
-    document.querySelectorAll('.rread').forEach(function (r) {
-      r.classList.add('is-on');
-      var sh = r.querySelector('.rshot');
-      if (sh) sh.classList.add('is-on');
-    });
-    var stage = document.getElementById('roomsStage');
-    if (stage) stage.classList.add('is-flat');
+
     document.querySelectorAll('.rule').forEach(function (r) { r.classList.add('in'); });
     document.querySelectorAll('.hero_wm, .foot_wm').forEach(function (w) { w.classList.add('in'); });
   }
@@ -227,98 +256,6 @@
       scrollTrigger: { trigger: r, start: 'top bottom', end: 'top 40%', scrub: SCRUB }
     });
   });
-
-  /* ---------- ROOMS: one frame, four views ----------
-     Desktop docks every shot into the sticky frame; below 1024px the SAME nodes move
-     back beside their own text, so the phone never downloads a second set. */
-  (function rooms() {
-    var stage = document.getElementById('roomsStage');
-    if (!stage) return;
-    var frame = document.getElementById('roomsFrame');
-    var face = document.getElementById('roomsFace');
-    var faceI = face ? face.querySelector('i') : null;
-    var reads = [].slice.call(stage.querySelectorAll('.rread'));
-    var shots = reads.map(function (r) { return r.querySelector('.rshot'); });
-    var ticks = [].slice.call(stage.querySelectorAll('.rtick'));
-    var FACES = ['South', 'Lower floor', 'Pétursey', 'Dyrhólaey'];
-    var wide = window.matchMedia('(min-width: 1024px)');
-    var docked = null, active = -1, io = null, faceToken = 0;
-
-    function setActive(i) {
-      if (i === active || i < 0) return;
-      active = i;
-      shots.forEach(function (s, k) { s.classList.toggle('is-on', k === i); });
-      if (frame) frame.classList.toggle('has-shot', docked);
-      reads.forEach(function (r, k) { r.classList.toggle('is-on', k === i); });
-      ticks.forEach(function (t, k) {
-        t.classList.toggle('is-on', k === i);
-        t.classList.toggle('is-past', k < i);
-      });
-      if (faceI && FACES[i] && faceI.textContent !== FACES[i]) {
-        /* the token is what stops a fast scroll landing an older label last */
-        var mine = ++faceToken;
-        face.classList.add('is-out');
-        setTimeout(function () {
-          if (mine !== faceToken) return;
-          faceI.textContent = FACES[i];
-          face.classList.remove('is-out');
-        }, 340);
-      }
-    }
-
-    function observe() {
-      if (io) io.disconnect();
-      if (docked) {
-        /* a narrow band across the middle: whichever read crosses it owns the frame */
-        io = new IntersectionObserver(function (es) {
-          es.forEach(function (e) {
-            if (e.isIntersecting) setActive(reads.indexOf(e.target));
-          });
-        }, { rootMargin: '-46% 0px -46% 0px' });
-        reads.forEach(function (r) { io.observe(r); });
-      } else {
-        /* vertical document: each shot opens on its own, and stays open */
-        io = new IntersectionObserver(function (es) {
-          es.forEach(function (e) {
-            if (!e.isIntersecting) return;
-            e.target.classList.add('is-on');
-            var sh = e.target.querySelector('.rshot');
-            if (sh) sh.classList.add('is-on');
-            io.unobserve(e.target);
-          });
-        }, { rootMargin: '0px 0px -18% 0px' });
-        reads.forEach(function (r) { io.observe(r); });
-      }
-    }
-
-    function dock(on) {
-      if (docked === on) return;
-      docked = on;
-      shots.forEach(function (sh, i) {
-        if (!sh) return;
-        var home = on ? frame : reads[i];
-        /* never re-insert a node already in place: insertBefore(node, node) still
-           detaches and re-attaches, which is enough to drop a pending lazy load */
-        if (sh.parentElement === home) return;
-        if (on) frame.appendChild(sh);
-        else reads[i].insertBefore(sh, reads[i].firstElementChild);
-      });
-      if (on) { active = -1; setActive(0); }
-      observe();
-    }
-
-    ticks.forEach(function (t, i) {
-      t.addEventListener('click', function () {
-        var y = reads[i].getBoundingClientRect().top + window.scrollY
-              - (window.innerHeight - reads[i].offsetHeight) / 2;
-        if (window.__lenis) window.__lenis.scrollTo(y, { duration: 1.1 });
-        else window.scrollTo({ top: y, behavior: 'smooth' });
-      });
-    });
-
-    dock(wide.matches);
-    wide.addEventListener('change', function (e) { dock(e.matches); ScrollTrigger.refresh(); });
-  })();
 
   /* ---------- cursor: Búðir's, in this build's accent ---------- */
   (function cursor() {
