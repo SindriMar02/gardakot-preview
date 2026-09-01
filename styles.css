@@ -528,39 +528,156 @@ html.js .hp_list.rev[data-armed]{transform:none}
 }
 
 /* ── the opening reveal ───────────────────────────────────────────────────
-   Sequence: the vermilion dot lands, the coastline draws itself around it, then the
-   mark flies to the nav and becomes the logo while the ink curtain retreats DOWNWARD —
-   so the page is uncovered top-first, in reading order, and the hero is already moving
-   as it appears. Both display rules carry `.is-out` as well as `html.intro-on`: an
-   element whose only display comes from the class its own script removes hits
-   display:none on the frame its exit should start, and cuts instead of animating. */
-.intro,.intro_mark{display:none}
-html.intro-on .intro,.intro.is-out{display:block}
-html.intro-on .intro_mark,.intro_mark.is-out{display:block}
+   A title card, not a logo loader. The first version was the mark alone on black: a
+   coastline mid-draw reads as unrelated scratches, the dot looks clipped where the line
+   crosses it, the name is nowhere, and the ground is not even the brand's.
+   This one is on CREAM — the hero's own ground — with the name already at the size it
+   ends up. It then travels into its slot in the hero while the page assembles around it,
+   so there is no cut: same ground, same face, same colour on both sides of the handoff.
+   Both display rules carry `.is-out`, or an element whose only display comes from the
+   class its own script removes hits display:none on the frame its exit should start. */
+.intro{display:none}
+html.intro-on .intro,.intro.is-out{display:grid}
 html.intro-on,html.intro-on body{overflow:hidden;height:100%}
 
-.intro{position:fixed;inset:0;z-index:120;background:var(--ink);
-  clip-path:inset(0 0 0 0);
-  transition:clip-path .95s cubic-bezier(.83,0,.17,1)}
-.intro.is-out{clip-path:inset(100% 0 0 0)}
+.intro{position:fixed;inset:0;z-index:120;background:var(--cream);
+  align-content:center;padding-inline:var(--pad);
+  opacity:1;transition:opacity .75s var(--ease)}
+.intro.is-out{opacity:0}
 
-.intro_mark{position:fixed;z-index:121;left:50%;top:50%;
-  transform:translate(-50%,-50%);pointer-events:none;
-  transition:opacity .25s linear}
-.intro_mark.is-gone{opacity:0}
-.intro_mark_in{display:block;transform-origin:50% 50%;
-  transition:transform .95s cubic-bezier(.76,0,.24,1)}
-.intro_mark svg{display:block;width:min(46vw,21rem);height:auto;color:#F4EFE7}
-/* --len is the path's own measured length, written by JS: a hand-guessed dasharray
-   either leaves a gap at the join or finishes the draw early */
-#introCoast{fill:none;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round;
-  vector-effect:non-scaling-stroke;
-  stroke-dasharray:var(--len);stroke-dashoffset:var(--len);
-  transition:stroke-dashoffset .8s cubic-bezier(.33,1,.68,1)}
-html.intro-draw #introCoast{stroke-dashoffset:0}
-#introDot{fill:var(--verm);transform-box:fill-box;transform-origin:50% 50%;
-  transform:scale(0);transition:transform .5s cubic-bezier(.34,1.35,.64,1)}
-html.intro-dot #introDot{transform:scale(1)}
-/* the nav mark holds its place but stays invisible until the flown one lands on it */
-html.intro-hold .nav_mark .mk{opacity:0}
-.nav_mark .mk{transition:opacity .25s linear}
+.intro_card{display:grid;justify-items:start;gap:0}
+.intro_isl{width:2.9rem;height:auto;color:var(--ink);margin-bottom:1.5rem;
+  opacity:0;transform:translateY(.5rem);
+  transition:opacity .6s var(--ease),transform .8s var(--expo)}
+html.intro-in .intro_isl{opacity:1;transform:none}
+
+/* the name, at its FINAL hero size — the handoff is a translate, never a rescale */
+.intro_word{overflow:hidden;padding-bottom:.06em;margin-bottom:-.06em}
+.intro_word span{display:block;overflow:hidden}
+.intro_word i{display:block;font-style:normal;white-space:nowrap;
+  font:300 min(23vw,30svh)/0.9 var(--disp);color:var(--verm);letter-spacing:-.015em;
+  transform:translateY(104%);
+  transition:transform 1.05s var(--expo)}
+html.intro-in .intro_word i{transform:translateY(0)}
+/* the travel itself sits on the OUTER element, so the mask reveal and the move never
+   fight over one transform */
+.intro_word{transition:transform 1.05s cubic-bezier(.76,0,.24,1)}
+
+.intro_rule{display:block;height:1px;width:min(38rem,72vw);background:var(--hair);
+  margin-top:clamp(1.2rem,3vh,2rem);
+  transform:scaleX(0);transform-origin:0 50%;
+  transition:transform 1s var(--expo) .25s}
+html.intro-in .intro_rule{transform:none}
+.intro_meta{margin-top:.9rem;font:500 .7rem/1 var(--sans);letter-spacing:.24em;
+  text-transform:uppercase;color:var(--ink-soft);
+  opacity:0;transform:translateY(.4rem);
+  transition:opacity .6s var(--ease) .4s,transform .7s var(--expo) .4s}
+html.intro-in .intro_meta{opacity:1;transform:none}
+/* card furniture clears out ahead of the name, so only the name is left to travel */
+html.intro-go .intro_isl,html.intro-go .intro_rule,html.intro-go .intro_meta{
+  opacity:0;transition:opacity .35s var(--ease)}
+
+/* the hero wordmark is the same drawing in the same place: hold it, then hand over
+   with no animation of its own, or the name plays its rise a second time */
+html.intro-hold .hero_wm{opacity:0}
+.hero_wm.no-anim i{transition:none}
+
+/* ── the booking picker ───────────────────────────────────────────────────
+   A cream card on the book section's ink ground: the one bright object in the
+   closing beat, and the thing the whole pitch is about. Behaviour ported from the
+   Aurora Hills StayPicker; the skin is this build's. */
+.bp{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr);
+  gap:clamp(1.5rem,3vw,3rem);background:var(--cream);color:var(--ink);
+  padding:clamp(1.4rem,3vw,2.4rem);margin-top:clamp(2rem,5vh,3.5rem)}
+.bp_cal{min-width:0}
+.bp_head{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding-bottom:clamp(1rem,2.5vh,1.5rem)}
+.bp_months{font:300 clamp(1.15rem,2.2vw,1.75rem)/1 var(--disp);letter-spacing:-.01em}
+.bp_arrow{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--hair);
+  border-radius:50%;flex:none;transition:border-color .3s var(--ease),background-color .3s var(--ease)}
+.bp_arrow[disabled]{opacity:.3;cursor:default}
+.bp_arrow span{display:block;width:8px;height:8px;border-left:1px solid currentColor;
+  border-bottom:1px solid currentColor;transform:rotate(45deg);margin-left:3px}
+.bp_arrow--r span{transform:rotate(-135deg);margin-left:-3px}
+@media (hover:hover) and (pointer:fine){
+  .bp_arrow:not([disabled]):hover{border-color:var(--ink);background:rgba(23,18,13,.05)}
+}
+.bp_grids{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1rem,2.5vw,2.2rem)}
+.bp_dows{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:.5rem}
+.bp_dows span{text-align:center;font:500 .6rem/1 var(--sans);letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-soft)}
+/* FLUSH cells — row-gap only. A column gap breaks the range bar into seven pieces. */
+.bp_grid_days{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+.bp_day{position:relative;aspect-ratio:1/1;display:grid;place-items:center;
+  font:400 .88rem/1 var(--sans);color:var(--ink);border-radius:0;
+  transition:color .2s var(--ease)}
+.bp_day[disabled]{color:rgba(23,18,13,.28);cursor:default}
+.bp_day--out{visibility:hidden}
+.bp_day--taken{color:rgba(23,18,13,.3);cursor:not-allowed;text-decoration:line-through;
+  text-decoration-thickness:1px}
+/* the bar is painted on ::before at inset 2px 0 so the row reads as one continuous
+   object; the caps switch on data-range so a lone check-in stays a full disc */
+/* NO z-index:-1 here. .bp_day is position:relative with z-index:auto, so it creates no
+   stacking context, and a negative pseudo drops behind the CARD's cream background —
+   the bar vanished and the selected day's white text went with it. Auto z-index paints
+   it above the parent's background; the number rides above on its own span. */
+.bp_day::before{content:'';position:absolute;inset:2px 0;background:transparent}
+.bp_day span{position:relative;z-index:1}
+.bp_day--mid::before{background:rgba(232,56,13,.14)}
+.bp_day--in::before,.bp_day--out2::before{background:var(--verm-ink)}
+.bp_day--in,.bp_day--out2{color:#fff}
+.bp_day--in::before{border-radius:2rem}
+.bp_day--out2::before{border-radius:2rem}
+.bp_grids[data-range] .bp_day--in::before{border-radius:2rem 0 0 2rem}
+.bp_grids[data-range] .bp_day--out2::before{border-radius:0 2rem 2rem 0}
+@media (hover:hover) and (pointer:fine){
+  .bp_day:not([disabled]):not(.bp_day--in):not(.bp_day--out2):hover{color:var(--verm-ink)}
+}
+.bp_legend{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
+  padding-top:clamp(.9rem,2vh,1.3rem);font:400 .72rem/1.5 var(--sans);color:var(--ink-soft)}
+.bp_key{width:10px;height:10px;flex:none;border-radius:50%}
+.bp_key--taken{background:rgba(23,18,13,.22)}
+.bp_key--free{background:var(--verm-ink);margin-left:.7rem}
+.bp_legend_x{margin-left:.4rem;opacity:.8}
+
+.bp_side{display:grid;align-content:start;gap:.9rem;min-width:0}
+.bp_dates{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.bp_date{display:grid;gap:.3rem;padding:.8rem .9rem;border:1px solid var(--hair);min-width:0}
+.bp_date.is-armed{border-color:var(--verm-ink)}
+.bp_date span{font:500 .58rem/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+.bp_date b{font:400 .95rem/1.2 var(--sans);overflow-wrap:anywhere}
+.bp_guests{display:flex;align-items:center;justify-content:space-between;gap:1rem;
+  padding:.55rem .9rem;border:1px solid var(--hair)}
+.bp_guests>span{font:500 .58rem/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+.bp_step{display:flex;align-items:center;gap:.3rem}
+.bp_pm{width:44px;height:44px;display:grid;place-items:center;font-size:1.05rem;color:var(--ink)}
+.bp_pm[disabled]{opacity:.28;cursor:default}
+.bp_step b{min-width:1.4rem;text-align:center;font:400 1rem/1 var(--sans)}
+/* display:grid beats the [hidden] attribute, so the empty summary sat there showing
+   two em-dashes before any date was picked */
+.bp_sum[hidden]{display:none}
+.bp_sum{display:grid;gap:.4rem;padding-top:.4rem}
+.bp_sum>div{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;
+  padding:.5rem 0;border-top:1px solid var(--hair)}
+.bp_sum dt{font:500 .6rem/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+.bp_sum dd{margin:0;font:400 .98rem/1 var(--sans)}
+.bp_sum_t dd{font:400 1.5rem/1 var(--disp);color:var(--verm-ink)}
+.bp_note{font:400 .8rem/1.5 var(--sans);color:var(--ink-soft);min-height:2.4em}
+.bp_note.is-warn{color:var(--verm-ink)}
+.bp_go{justify-self:start;background:var(--ink);color:var(--cream);border-color:var(--ink)}
+@media (hover:hover) and (pointer:fine){ .bp_go:hover{background:var(--verm-ink);border-color:var(--verm-ink)} }
+
+@media (max-width:1023px){
+  .bp{grid-template-columns:1fr;gap:1.4rem}
+  /* one month, not two: two 7-column grids inside 390px gives 24px cells */
+  .bp_grids{grid-template-columns:1fr}
+  .bp_grid--2{display:none}
+  .bp_day{font-size:.95rem;min-height:44px}
+  .bp_side{gap:.75rem}
+}
+@media (max-width:420px){
+  /* seven cells across a 375pt phone: the card's own padding is what pushed each one
+     to 41x41, under the 44pt floor. Give the grid the width back. */
+  .bp{padding:1rem .9rem}
+  .bp_date,.bp_guests{padding-inline:.7rem}
+}

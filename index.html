@@ -38,18 +38,25 @@
   d.className=(d.className+' intro-on intro-hold').trim();
 }catch(e){}})();
 </script>
-<link rel="stylesheet" href="styles.css?v=9d2717df">
+<link rel="stylesheet" href="styles.css?v=a845c5fd">
 </head>
 <body data-ground="dawn">
 
-<!-- The opening reveal. Their logo's one idea is a dot on the south coast; here the dot
-     arrives first, the island draws itself around it, and the mark then flies into the nav
-     and BECOMES the logo while the curtain retreats downward off the page. -->
-<div class="intro" id="intro" aria-hidden="true"></div>
-<div class="intro_mark" id="introMark" aria-hidden="true">
-  <span class="intro_mark_in" id="introMarkIn">
-    <svg viewBox="0 0 100 64.94"><path id="introCoast" d="M77.3,0.0 72.1,0.4 72.4,6.6 65.7,7.0 63.4,11.1 61.2,7.5 56.3,7.5 55.2,10.3 50.4,7.0 45.8,10.1 46.4,15.6 40.8,8.5 37.7,8.6 38.0,18.0 33.1,18.2 30.8,23.4 27.7,18.0 29.5,11.0 19.7,1.7 12.5,2.1 19.0,11.4 9.1,6.9 6.5,15.2 4.0,15.0 4.4,19.3 2.0,18.3 0.0,21.3 23.4,23.2 15.6,28.6 17.4,30.9 4.4,33.9 6.6,37.5 19.7,37.0 19.7,41.7 24.6,48.2 18.9,52.2 16.5,50.1 16.0,56.2 30.0,55.1 39.4,62.1 52.7,64.9 90.5,44.5 100.0,30.8 98.9,20.9 92.8,15.4 88.2,16.3 89.9,11.4 85.1,8.9 90.8,3.3 87.5,3.0 82.7,7.7 77.3,0.0Z"/><circle id="introDot" cx="48.8" cy="63.39" r="5"/></svg>
-  </span>
+<!-- The opening reveal. A title card on the brand's OWN cream ground, not a logo in a
+     black void: the name at the size it will end up, then it travels into its slot in the
+     hero while the rest of the page assembles around it. Same ground, same type, same
+     colour on both sides of the handoff, so there is nothing to cut between. -->
+<div class="intro" id="intro" aria-hidden="true">
+  <div class="intro_card" id="introCard">
+    <svg class="intro_isl" viewBox="0 0 100 64.94" aria-hidden="true">
+      <path d="M77.3,0.0 72.1,0.4 72.4,6.6 65.7,7.0 63.4,11.1 61.2,7.5 56.3,7.5 55.2,10.3 50.4,7.0 45.8,10.1 46.4,15.6 40.8,8.5 37.7,8.6 38.0,18.0 33.1,18.2 30.8,23.4 27.7,18.0 29.5,11.0 19.7,1.7 12.5,2.1 19.0,11.4 9.1,6.9 6.5,15.2 4.0,15.0 4.4,19.3 2.0,18.3 0.0,21.3 23.4,23.2 15.6,28.6 17.4,30.9 4.4,33.9 6.6,37.5 19.7,37.0 19.7,41.7 24.6,48.2 18.9,52.2 16.5,50.1 16.0,56.2 30.0,55.1 39.4,62.1 52.7,64.9 90.5,44.5 100.0,30.8 98.9,20.9 92.8,15.4 88.2,16.3 89.9,11.4 85.1,8.9 90.8,3.3 87.5,3.0 82.7,7.7 77.3,0.0Z" fill="none" stroke="currentColor" stroke-width="1"
+            stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity=".55"/>
+      <circle cx="48.8" cy="63.39" r="5" fill="var(--verm-ink)"/>
+    </svg>
+    <p class="intro_word" id="introWord"><span><i>Garðakot</i></span></p>
+    <span class="intro_rule"></span>
+    <p class="intro_meta">871 V&#237;k &#183; Iceland</p>
+  </div>
 </div>
 
 <a class="skip" href="#main">Skip to content</a>
@@ -384,9 +391,46 @@
           <div><dt>Host</dt><dd>Superhost, 9 years</dd></div>
         </dl>
         <div class="book_cta">
-          <a class="btn" href="mailto:gardakot@gmail.com?subject=Booking%20enquiry%20%C2%B7%20Gar%C3%B0akot">Send an enquiry</a>
           <a class="btn btn--ghost" href="tel:+3547693828">+354 769 3828</a>
-          <p class="book_small">Eva Dögg Þorsteinsdóttir holds the licence for Garðakot and hosts it herself.</p>
+          <p class="book_small">Eva D&#246;gg &#222;orsteinsd&#243;ttir holds the licence for Gar&#240;akot and hosts it herself.</p>
+        </div>
+      </div>
+
+      <!-- The booking device. Ported from the Aurora Hills StayPicker: three-rule click
+           state machine (a third click restarts, so there is no clear button), past
+           blocked, taken nights struck, a range that crosses a taken night refused with
+           the reason said out loud, and the trap that matters — a taken date is still a
+           legal CHECKOUT, so the crossing test runs over [start, end-1]. -->
+      <div class="bp" id="bp">
+        <div class="bp_cal">
+          <div class="bp_head">
+            <button class="bp_arrow" id="bpPrev" type="button" aria-label="Previous month"><span></span></button>
+            <p class="bp_months" id="bpMonths" aria-live="polite"></p>
+            <button class="bp_arrow bp_arrow--r" id="bpNext" type="button" aria-label="Next month"><span></span></button>
+          </div>
+          <div class="bp_grids" id="bpGrids"></div>
+          <p class="bp_legend"><span class="bp_key bp_key--taken"></span>Taken<span class="bp_key bp_key--free"></span>Your stay <span class="bp_legend_x">&#183; Sample availability and house rules</span></p>
+        </div>
+
+        <div class="bp_side">
+          <div class="bp_dates">
+            <div class="bp_date" id="bpFromBox"><span>Check in</span><b id="bpFrom">Pick a date</b></div>
+            <div class="bp_date" id="bpToBox"><span>Check out</span><b id="bpTo">&#8212;</b></div>
+          </div>
+          <div class="bp_guests">
+            <span>Guests</span>
+            <div class="bp_step">
+              <button class="bp_pm" id="bpMinus" type="button" aria-label="One guest fewer">&#8722;</button>
+              <b id="bpGuests" aria-live="polite">2</b>
+              <button class="bp_pm" id="bpPlus" type="button" aria-label="One guest more">+</button>
+            </div>
+          </div>
+          <dl class="bp_sum" id="bpSum" hidden>
+            <div><dt id="bpNightsL">Nights</dt><dd id="bpNights">&#8212;</dd></div>
+            <div class="bp_sum_t"><dt>Total</dt><dd id="bpTotal">&#8212;</dd></div>
+          </dl>
+          <p class="bp_note" id="bpNote">Pick your arrival, then your departure. Nights in grey are already taken.</p>
+          <a class="btn bp_go" id="bpGo" href="mailto:gardakot@gmail.com?subject=Booking%20enquiry%20%C2%B7%20Gar%C3%B0akot">Request these dates</a>
         </div>
       </div>
     </div>
@@ -431,6 +475,6 @@
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/vendor/lenis.min.js"></script>
-<script src="app.js?v=85b5ad15"></script>
+<script src="app.js?v=8c06554e"></script>
 </body>
 </html>

@@ -82,65 +82,61 @@
   function heroGo(name, fn) { if (INTRO) heroBeats[name] = fn; else fn(); }
   function releaseHero() {
     var b = heroBeats; heroBeats = {}; INTRO = false;
-    if (b.lede) setTimeout(b.lede, 150);
-    if (b.wm) setTimeout(b.wm, 330);
+    if (b.lede) setTimeout(b.lede, 120);
     Object.keys(b).forEach(function (k) { if (k !== 'lede' && k !== 'wm') b[k](); });
   }
 
   (function intro() {
     if (!INTRO) return;
-    var curtain = document.getElementById('intro');
-    var mark = document.getElementById('introMark');
-    var inner = document.getElementById('introMarkIn');
-    var coast = document.getElementById('introCoast');
-    if (!curtain || !mark || !inner || !coast) { root.classList.remove('intro-on', 'intro-hold'); INTRO = false; return; }
+    var el = document.getElementById('intro');
+    var card = document.getElementById('introCard');
+    var word = document.getElementById('introWord');
+    var heroWmEl = document.querySelector('.hero_wm');
+    if (!el || !card || !word || !heroWmEl) { root.classList.remove('intro-on', 'intro-hold'); INTRO = false; return; }
     window.scrollTo(0, 0);
-    coast.style.setProperty('--len', coast.getTotalLength().toFixed(1));
 
     var t = [];
     function at(ms, fn) { t.push(setTimeout(fn, ms)); }
-
-    at(20,  function () { root.classList.add('intro-dot'); });
-    at(200, function () { root.classList.add('intro-draw'); });
-    at(900, function () {
-      /* FLIP the mark onto the nav's own mark: measure both boxes and apply the delta as
-         one transform. It does not fade out and a second one fade in — it is the same
-         drawing arriving where the logo lives. */
-      var svg = inner.querySelector('svg');
-      var navMk = document.querySelector('.nav_mark .mk');
-      if (navMk) {
-        var a = svg.getBoundingClientRect(), b = navMk.getBoundingClientRect();
-        if (a.width && b.width) {
-          inner.style.transform = 'translate(' + ((b.left + b.width / 2) - (a.left + a.width / 2)).toFixed(1) + 'px,'
-            + ((b.top + b.height / 2) - (a.top + a.height / 2)).toFixed(1) + 'px) scale('
-            + (b.width / a.width).toFixed(4) + ')';
-        }
-      }
-      curtain.classList.add('is-out');
-      mark.classList.add('is-out');
-      releaseHero();
-    });
-    at(1830, function () {
-      root.classList.remove('intro-hold');     // the nav mark takes over, in place
-      mark.classList.add('is-gone');
-      root.classList.remove('intro-on');       // scroll unlocks; .is-out keeps both displayed
-      root.classList.remove('intro-dot', 'intro-draw');
+    function done() {
+      root.classList.remove('intro-on', 'intro-hold', 'intro-in', 'intro-go');
       if (window.__lenis) window.__lenis.start();
+    }
+
+    at(30, function () { root.classList.add('intro-in'); });
+
+    at(1150, function () {
+      /* The name travels from the card into its slot in the hero. Both are the same face
+         at the same size, so this is a pure translate — measured, never guessed, because
+         the hero wordmark's position depends on the hero's own layout. */
+      var from = word.getBoundingClientRect();
+      var to = heroWmEl.getBoundingClientRect();
+      word.style.transform = 'translate(' + (to.left - from.left).toFixed(1) + 'px,'
+                                          + (to.top - from.top).toFixed(1) + 'px)';
+      root.classList.add('intro-go');       // the card furniture clears, the name stays
+      el.classList.add('is-out');           // the cream ground fades off the hero beneath
+      releaseHero();                        // and the hero is moving before it is visible
+    });
+
+    at(2150, function () {
+      /* hand over: the real wordmark takes the same pixels with no animation of its own */
+      heroWmEl.classList.add('in', 'no-anim');
+      root.classList.remove('intro-hold');
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { heroWmEl.classList.remove('no-anim'); });
+      });
+      done();
       window.dispatchEvent(new Event('resize'));
     });
-    /* the nodes outlive their own transitions, or they pop out mid-flight */
-    at(2350, function () { curtain.remove(); mark.remove(); });
+    at(2400, function () { el.remove(); });
 
     /* any escape hatch must leave the page usable, not half-covered */
     function bail() {
       t.forEach(clearTimeout);
-      root.classList.remove('intro-on', 'intro-hold', 'intro-dot', 'intro-draw');
-      curtain.remove(); mark.remove();
-      if (window.__lenis) window.__lenis.start();
-      releaseHero();
+      heroWmEl.classList.add('in');
+      el.remove(); done(); releaseHero();
     }
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') bail(); });
-    setTimeout(function () { if (document.body.contains(curtain)) bail(); }, 6000);
+    setTimeout(function () { if (document.body.contains(el)) bail(); }, 6000);
   })();
 
   /* ---------- nav state ---------- */
@@ -284,6 +280,189 @@
     wake.observe(list);
   })();
 
+  /* ---------- the booking picker ----------
+     Behaviour ported from 02-clients/aurora-hills StayPicker (see the stay-picker
+     memory: copy the implementation, not the spec). Sits BEFORE the reduced-motion
+     return — booking is function, not decoration, and must work with motion off. */
+  (function picker() {
+    var host = document.getElementById('bp');
+    if (!host) return;
+    var MIN_STAY = 2, RATE = 968, SLEEPS = 8, MONTHS_SHOWN = 2;
+    var WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    var MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var DAY = 86400000;
+    var sod = function (d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+    var addD = function (d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); };
+    var addM = function (d, n) { return new Date(d.getFullYear(), d.getMonth() + n, 1); };
+    var nights = function (a, b) { return Math.round((b - a) / DAY); };
+    var same = function (a, b) { return !!a && !!b && a.getTime() === b.getTime(); };
+    /* local key, never toISOString(): that shifts the day in UTC-negative zones and
+       would block the wrong night for a guest reading this in Reykjavík */
+    var key = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    var fmt = function (d) { return WD[(d.getDay() + 6) % 7] + ' ' + d.getDate() + ' ' + MN[d.getMonth()].slice(0, 3); };
+    var fmtLong = function (d) { return d.getDate() + ' ' + MN[d.getMonth()] + ' ' + d.getFullYear(); };
+
+    /* Hashed, never random: a reload must not reshuffle which nights are taken, or the
+       calendar contradicts itself between visits. FNV-1a WITH the murmur3 finalizer —
+       plain FNV has poor avalanche across near-identical keys and lands every value in
+       one narrow band, which once rendered a house nobody could book. */
+    function hash(str) {
+      var h = 0x811c9dc5;
+      for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+      h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b);
+      h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35);
+      h ^= h >>> 16;
+      return (h >>> 0) / 0x100000000;
+    }
+    /* Load is tuned so the house reads BUSY BUT BOOKABLE. The first pass ran .17/.30 and
+       put a taken night every day or two: 10 of 30 nights gone and not one legal 2-night
+       range in the fortnight ahead, so the picker refused everything and demonstrated
+       nothing. Weekends still go first, which is what makes the pattern look real. */
+    function taken(d) {
+      var dow = d.getDay(), load = (dow === 5 || dow === 6) ? 0.17 : 0.09;
+      return hash('gardakot:' + key(d)) < load;
+    }
+
+    var finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    var today = sod(new Date());
+    /* open on a month that can be booked: landing on the 29th shows a grid that is
+       almost entirely greyed-out past and reads as a full house */
+    var daysLeft = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate();
+    var month = new Date(today.getFullYear(), today.getMonth() + (daysLeft < 7 ? 1 : 0), 1);
+    var start = null, end = null, hover = null, guests = 2;
+
+    var grids = document.getElementById('bpGrids'), monthsEl = document.getElementById('bpMonths');
+    var prev = document.getElementById('bpPrev'), next = document.getElementById('bpNext');
+    var noteEl = document.getElementById('bpNote'), sum = document.getElementById('bpSum');
+    var fromEl = document.getElementById('bpFrom'), toEl = document.getElementById('bpTo');
+    var fromBox = document.getElementById('bpFromBox'), toBox = document.getElementById('bpToBox');
+    var nEl = document.getElementById('bpNights'), nL = document.getElementById('bpNightsL');
+    var tEl = document.getElementById('bpTotal'), gEl = document.getElementById('bpGuests');
+    var minus = document.getElementById('bpMinus'), plus = document.getElementById('bpPlus');
+    var go = document.getElementById('bpGo');
+
+    function note(text, warn) {
+      noteEl.textContent = text;
+      noteEl.classList.toggle('is-warn', !!warn);
+    }
+    /* a night is the date it STARTS on, so a stay start..end occupies start .. end-1.
+       Checking out on a taken date is legal — you leave that morning and the next guest
+       arrives that afternoon. Testing [start, end] instead refuses bookable stays. */
+    function crosses(a, b) {
+      for (var d = a; d < b; d = addD(d, 1)) if (taken(d)) return true;
+      return false;
+    }
+
+    function pick(day) {
+      if (day < today) return;
+      if (taken(day) && (!start || end)) {
+        note(fmtLong(day) + ' is already taken. The nights in grey are booked.', true); return;
+      }
+      if (!start || (start && end)) { start = day; end = null; note('Now pick your departure.'); render(); return; }
+      if (day <= start) { start = day; end = null; note('Now pick your departure.'); render(); return; }
+      if (crosses(start, day)) {
+        note('There is a booked night inside those dates. Pick a checkout before it, or start later.', true); render(); return;
+      }
+      if (nights(start, day) < MIN_STAY) {
+        note('The minimum stay is ' + MIN_STAY + ' nights, so the earliest checkout is ' + fmtLong(addD(start, MIN_STAY)) + '.', true); render(); return;
+      }
+      end = day; note('Send these dates and Eva Dögg answers with a confirmation.'); render();
+    }
+
+    function render() {
+      var frag = document.createDocumentFragment();
+      /* the range is only a continuous bar once it HAS two ends */
+      var pe = (start && !end && hover && hover > start) ? hover : null;
+      if (end || pe) grids.setAttribute('data-range', ''); else grids.removeAttribute('data-range');
+
+      for (var mi = 0; mi < MONTHS_SHOWN; mi++) {
+        var m = addM(month, mi);
+        var wrap = document.createElement('div');
+        wrap.className = 'bp_grid' + (mi ? ' bp_grid--2' : '');
+        var dows = document.createElement('div'); dows.className = 'bp_dows'; dows.setAttribute('aria-hidden', 'true');
+        WD.forEach(function (w) { var e = document.createElement('span'); e.textContent = w.slice(0, 1); dows.appendChild(e); });
+        wrap.appendChild(dows);
+        var days = document.createElement('div');
+        days.className = 'bp_grid_days'; days.setAttribute('role', 'group');
+        days.setAttribute('aria-label', MN[m.getMonth()] + ' ' + m.getFullYear());
+        var first = new Date(m.getFullYear(), m.getMonth(), 1);
+        var lead = (first.getDay() + 6) % 7;
+        /* always six rows, or the panel jumps height when you page months */
+        for (var i = 0; i < 42; i++) {
+          var d = addD(first, i - lead);
+          var inMonth = d.getMonth() === m.getMonth();
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'bp_day';
+          var sp = document.createElement('span'); sp.textContent = d.getDate(); b.appendChild(sp);
+          if (!inMonth) { b.classList.add('bp_day--out'); b.disabled = true; b.tabIndex = -1; }
+          else {
+            var past = d < today, tk = taken(d);
+            if (past) { b.disabled = true; }
+            else if (tk) { b.classList.add('bp_day--taken'); }
+            var to = end || pe;
+            if (same(d, start)) b.classList.add('bp_day--in');
+            else if (to && same(d, to)) b.classList.add('bp_day--out2');
+            else if (start && to && d > start && d < to) b.classList.add('bp_day--mid');
+            b.setAttribute('aria-label', fmtLong(d) + (tk ? ', booked' : past ? ', past' : ''));
+            (function (day) {
+              b.addEventListener('click', function () { pick(day); });
+              /* FINE POINTERS ONLY. On touch, pointerenter fires as the finger lands, and
+                 render() rebuilds the whole grid — which removes the very button that is
+                 mid-tap, so its click never arrives and the second date could not be
+                 chosen at all on a phone. Hover preview is a mouse affordance anyway. */
+              if (finePointer) {
+                b.addEventListener('pointerenter', function () { if (start && !end) { hover = day; render(); } });
+              }
+            })(d);
+          }
+          days.appendChild(b);
+        }
+        wrap.appendChild(days);
+        frag.appendChild(wrap);
+      }
+      grids.textContent = ''; grids.appendChild(frag);
+
+      var wide = window.matchMedia('(min-width: 1024px)').matches;
+      var m2 = addM(month, 1);
+      monthsEl.textContent = MN[month.getMonth()] + ' ' + month.getFullYear()
+        + (wide ? '  ·  ' + MN[m2.getMonth()] + ' ' + m2.getFullYear() : '');
+      prev.disabled = !(month > new Date(today.getFullYear(), today.getMonth(), 1));
+
+      fromEl.textContent = start ? fmt(start) : 'Pick a date';
+      toEl.textContent = end ? fmt(end) : '—';
+      fromBox.classList.toggle('is-armed', !start || !!(start && end));
+      toBox.classList.toggle('is-armed', !!start && !end);
+      gEl.textContent = guests;
+      minus.disabled = guests <= 1; plus.disabled = guests >= SLEEPS;
+
+      var n = (start && end) ? nights(start, end) : 0;
+      sum.hidden = !n;
+      if (n) {
+        nL.textContent = n === 1 ? 'Night' : 'Nights';
+        nEl.textContent = n + ' × US$' + RATE.toLocaleString('en-US');
+        tEl.textContent = 'US$' + (n * RATE).toLocaleString('en-US');
+      }
+
+      var body = start && end
+        ? 'We would like to stay at Garðakot from ' + fmtLong(start) + ' to ' + fmtLong(end)
+          + ' (' + n + (n === 1 ? ' night' : ' nights') + ').\nGuests: ' + guests
+          + '\nRate shown on the site: US$' + RATE.toLocaleString('en-US') + ' a night, US$'
+          + (n * RATE).toLocaleString('en-US') + ' in total.\n\nName:\nPhone:'
+        : 'We would like to ask about staying at Garðakot.\nGuests: ' + guests + '\n\nDates:\nName:\nPhone:';
+      go.href = 'mailto:gardakot@gmail.com?subject=' + encodeURIComponent('Booking request · Garðakot')
+        + '&body=' + encodeURIComponent(body);
+      go.textContent = start && end ? 'Request these dates' : 'Send an enquiry';
+    }
+
+    prev.addEventListener('click', function () { month = addM(month, -1); render(); });
+    next.addEventListener('click', function () { month = addM(month, 1); render(); });
+    minus.addEventListener('click', function () { if (guests > 1) { guests--; render(); } });
+    plus.addEventListener('click', function () { if (guests < SLEEPS) { guests++; render(); } });
+    if (finePointer) grids.addEventListener('pointerleave', function () { if (hover) { hover = null; render(); } });
+    window.addEventListener('resize', render);
+    render();
+  })();
+
   /* ---------- no-JS / reduced-motion escape ---------- */
   function showAll() {
     document.querySelectorAll('[data-split="lines"], [data-reveal]').forEach(function (el) {
@@ -317,9 +496,8 @@
 
   /* ---------- the hero wordmark rises, then the lede ---------- */
   var heroWm = document.querySelector('.hero_wm');
-  requestAnimationFrame(function () {
-    heroGo('wm', function () { if (heroWm) heroWm.classList.add('in'); });
-  });
+  /* with an intro running, the wordmark is handed over by the FLIP, not raised here */
+  if (!INTRO) requestAnimationFrame(function () { if (heroWm) heroWm.classList.add('in'); });
 
   /* ---------- splits + reveals ---------- */
   function armReveals() {
