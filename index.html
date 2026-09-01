@@ -26,9 +26,31 @@
      is Airbnb's, supplied 2026-09-01. Photographs are the owner's own, from that listing;
      assets/img/manifest.json records the source URL and true size of each. -->
 
-<link rel="stylesheet" href="styles.css?v=ae12b963">
+<script>
+/* Decide before first paint whether the opening reveal runs. A deep link, a reduced-motion
+   preference or ?nointro all skip it outright — nobody arriving at #book should sit through
+   an intro, and the curtain must never flash for someone who is not getting one. */
+(function(){var d=document.documentElement;try{
+  if(location.hash)return; if(/[?&]nointro/.test(location.search))return;
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  if(!('animate'in document.createElement('div')))return;
+  if('scrollRestoration'in history)history.scrollRestoration='manual';
+  d.className=(d.className+' intro-on intro-hold').trim();
+}catch(e){}})();
+</script>
+<link rel="stylesheet" href="styles.css?v=9d2717df">
 </head>
 <body data-ground="dawn">
+
+<!-- The opening reveal. Their logo's one idea is a dot on the south coast; here the dot
+     arrives first, the island draws itself around it, and the mark then flies into the nav
+     and BECOMES the logo while the curtain retreats downward off the page. -->
+<div class="intro" id="intro" aria-hidden="true"></div>
+<div class="intro_mark" id="introMark" aria-hidden="true">
+  <span class="intro_mark_in" id="introMarkIn">
+    <svg viewBox="0 0 100 64.94"><path id="introCoast" d="M77.3,0.0 72.1,0.4 72.4,6.6 65.7,7.0 63.4,11.1 61.2,7.5 56.3,7.5 55.2,10.3 50.4,7.0 45.8,10.1 46.4,15.6 40.8,8.5 37.7,8.6 38.0,18.0 33.1,18.2 30.8,23.4 27.7,18.0 29.5,11.0 19.7,1.7 12.5,2.1 19.0,11.4 9.1,6.9 6.5,15.2 4.0,15.0 4.4,19.3 2.0,18.3 0.0,21.3 23.4,23.2 15.6,28.6 17.4,30.9 4.4,33.9 6.6,37.5 19.7,37.0 19.7,41.7 24.6,48.2 18.9,52.2 16.5,50.1 16.0,56.2 30.0,55.1 39.4,62.1 52.7,64.9 90.5,44.5 100.0,30.8 98.9,20.9 92.8,15.4 88.2,16.3 89.9,11.4 85.1,8.9 90.8,3.3 87.5,3.0 82.7,7.7 77.3,0.0Z"/><circle id="introDot" cx="48.8" cy="63.39" r="5"/></svg>
+  </span>
+</div>
 
 <a class="skip" href="#main">Skip to content</a>
 
@@ -409,6 +431,6 @@
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/vendor/lenis.min.js"></script>
-<script src="app.js?v=d6b32857"></script>
+<script src="app.js?v=85b5ad15"></script>
 </body>
 </html>

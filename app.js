@@ -72,6 +72,77 @@
     });
   }
 
+  /* ---------- the opening reveal ----------
+     The whole point of a curtain is that the page is ALIVE when it lifts. So the hero's
+     own beats are queued rather than fired, and released against the uncover: the curtain
+     retreats downward, so the lede (top of the page) is uncovered first and the wordmark
+     (bottom) last, and each starts just after its own moment. */
+  var INTRO = root.classList.contains('intro-on');
+  var heroBeats = {};
+  function heroGo(name, fn) { if (INTRO) heroBeats[name] = fn; else fn(); }
+  function releaseHero() {
+    var b = heroBeats; heroBeats = {}; INTRO = false;
+    if (b.lede) setTimeout(b.lede, 150);
+    if (b.wm) setTimeout(b.wm, 330);
+    Object.keys(b).forEach(function (k) { if (k !== 'lede' && k !== 'wm') b[k](); });
+  }
+
+  (function intro() {
+    if (!INTRO) return;
+    var curtain = document.getElementById('intro');
+    var mark = document.getElementById('introMark');
+    var inner = document.getElementById('introMarkIn');
+    var coast = document.getElementById('introCoast');
+    if (!curtain || !mark || !inner || !coast) { root.classList.remove('intro-on', 'intro-hold'); INTRO = false; return; }
+    window.scrollTo(0, 0);
+    coast.style.setProperty('--len', coast.getTotalLength().toFixed(1));
+
+    var t = [];
+    function at(ms, fn) { t.push(setTimeout(fn, ms)); }
+
+    at(20,  function () { root.classList.add('intro-dot'); });
+    at(200, function () { root.classList.add('intro-draw'); });
+    at(900, function () {
+      /* FLIP the mark onto the nav's own mark: measure both boxes and apply the delta as
+         one transform. It does not fade out and a second one fade in — it is the same
+         drawing arriving where the logo lives. */
+      var svg = inner.querySelector('svg');
+      var navMk = document.querySelector('.nav_mark .mk');
+      if (navMk) {
+        var a = svg.getBoundingClientRect(), b = navMk.getBoundingClientRect();
+        if (a.width && b.width) {
+          inner.style.transform = 'translate(' + ((b.left + b.width / 2) - (a.left + a.width / 2)).toFixed(1) + 'px,'
+            + ((b.top + b.height / 2) - (a.top + a.height / 2)).toFixed(1) + 'px) scale('
+            + (b.width / a.width).toFixed(4) + ')';
+        }
+      }
+      curtain.classList.add('is-out');
+      mark.classList.add('is-out');
+      releaseHero();
+    });
+    at(1830, function () {
+      root.classList.remove('intro-hold');     // the nav mark takes over, in place
+      mark.classList.add('is-gone');
+      root.classList.remove('intro-on');       // scroll unlocks; .is-out keeps both displayed
+      root.classList.remove('intro-dot', 'intro-draw');
+      if (window.__lenis) window.__lenis.start();
+      window.dispatchEvent(new Event('resize'));
+    });
+    /* the nodes outlive their own transitions, or they pop out mid-flight */
+    at(2350, function () { curtain.remove(); mark.remove(); });
+
+    /* any escape hatch must leave the page usable, not half-covered */
+    function bail() {
+      t.forEach(clearTimeout);
+      root.classList.remove('intro-on', 'intro-hold', 'intro-dot', 'intro-draw');
+      curtain.remove(); mark.remove();
+      if (window.__lenis) window.__lenis.start();
+      releaseHero();
+    }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') bail(); });
+    setTimeout(function () { if (document.body.contains(curtain)) bail(); }, 6000);
+  })();
+
   /* ---------- nav state ---------- */
   function syncScrolled() { body.classList.toggle('scrolled', window.scrollY > 12); }
   syncScrolled();
@@ -101,29 +172,87 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && menuOpen) setMenu(false); });
   }
 
-  /* ---------- ground ----------
-     One attribute on <body> drives the palette. The band sits in the UPPER third so the
-     change arrives as you ENTER a section, not once it has reached the middle of the
-     screen, which read as lag on skyretreat. */
+  /* ---------- ground: ONE scrubbed value, driven by scroll position ----------
+     The old version was an IntersectionObserver flipping data-ground with a .3s CSS
+     transition: a switch that fired at a threshold and then ran on its own clock, which
+     is exactly why it did not feel tied to the scroll. Now every section contributes a
+     night value (0 or 1) at its own top, and --night is INTERPOLATED across a band ~90%
+     of a viewport tall centred on each boundary. Scroll half the band and you are half
+     way between cream and ink; stop, and it stops.
+
+     Written as a custom property on <html> once per frame. Everything downstream —
+     the body ground, the opaque nav bar, text, hairlines — is a color-mix along it, so
+     they cannot drift apart, which is what keeps the iOS status bar matching. */
   var meta = document.getElementById('themeColor');
-  var GROUND_META = { night: '#17120D', dusk: '#F2E7D9', day: '#FBF3EA', dawn: '#FBF3EA' };
-  function setGround(g) {
-    if (body.dataset.ground === g) return;
-    body.dataset.ground = g;
-    if (meta) meta.setAttribute('content', GROUND_META[g] || '#FBF3EA');
+  var NIGHT = { night: 1, dusk: 0, day: 0, dawn: 0 };
+  var stops = [];        // [{ y, v }] sorted, one per section top
+  var band = 600;
+
+  function measureGround() {
+    stops = [];
+    document.querySelectorAll('[data-ground]').forEach(function (el) {
+      if (el === body) return;
+      stops.push({ y: el.getBoundingClientRect().top + window.scrollY,
+                   v: NIGHT[el.dataset.ground] || 0 });
+    });
+    stops.sort(function (a, b) { return a.y - b.y; });
+    band = Math.min(window.innerHeight * 0.9, 700);
   }
-  var groundIO = new IntersectionObserver(function (es) {
-    es.forEach(function (e) { if (e.isIntersecting) setGround(e.target.dataset.ground || 'dawn'); });
-  }, { rootMargin: '-12% 0% -62% 0%' });
-  document.querySelectorAll('[data-ground]').forEach(function (s) {
-    if (s !== body && s.dataset.ground) groundIO.observe(s);
-  });
+
+  var lastNight = -1, lastMeta = '';
+  var CREAM = [251, 243, 234], INK = [23, 18, 13];
+  function mix(t) {
+    return '#' + CREAM.map(function (c, i) {
+      return Math.round(c + (INK[i] - c) * t).toString(16).padStart(2, '0');
+    }).join('').toUpperCase();
+  }
+  function nightAt(y) {
+    if (!stops.length) return 0;
+    var mid = y + window.innerHeight * 0.35;    // judge by the upper third, as before
+    var v = stops[0].v;
+    for (var i = 0; i < stops.length; i++) {
+      var s = stops[i];
+      if (mid >= s.y + band / 2) { v = s.v; continue; }
+      if (mid <= s.y - band / 2) break;
+      // inside the band: ease between the value before this boundary and this one
+      var prev = i ? stops[i - 1].v : s.v;
+      var t = (mid - (s.y - band / 2)) / band;
+      t = t * t * (3 - 2 * t);                  // smoothstep, no visible corner at either end
+      v = prev + (s.v - prev) * t;
+      break;
+    }
+    return v;
+  }
+
+  function paintGround() {
+    var n = nightAt(window.scrollY);
+    if (Math.abs(n - lastNight) < 0.002) return;
+    lastNight = n;
+    root.style.setProperty('--night', n.toFixed(3));
+    /* iOS tints the status bar from the pixels at the top edge, and the top edge is the
+       opaque nav painted in --g-bg. Give theme-color the SAME mix, not the nearest end,
+       or the chrome snaps while the ground is still crossing. Quantised to 1/32 so the
+       meta is not rewritten every frame. */
+    if (meta) {
+      var q = Math.round(n * 32) / 32, c = mix(q);
+      if (c !== lastMeta) { meta.setAttribute('content', c); lastMeta = c; }
+    }
+    body.dataset.ground = n > 0.5 ? 'night' : 'dawn';   // kept for the no-color-mix fallback
+  }
+
+  measureGround();
+  paintGround();
+  window.addEventListener('scroll', paintGround, { passive: true });
+  window.addEventListener('resize', function () { measureGround(); paintGround(); });
+  window.addEventListener('load', function () { measureGround(); paintGround(); });
 
   /* ---------- ROOMS: expanding cards ----------
      Mechanism from 21st.dev "Expanding Cards" (vaib215). The state is ONE attribute on
      the list — data-active — and the grid tracks in CSS do the animating. Hover opens
      on a fine pointer; focus and tap open everywhere. A tap on a CLOSED card opens it
-     and swallows the click, so the Book link inside is only reachable once open. */
+     and swallows the click, so the Book link inside is only reachable once open.
+     This sits BEFORE the reduced-motion return on purpose: opening a room is function,
+     not decoration, and must work with motion off and without GSAP. */
   (function xcards() {
     var list = document.getElementById('xcards');
     if (!list) return;
@@ -145,10 +274,8 @@
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(i); }
       });
     });
-    /* every card keeps a real rendered area now, so the lazy loader fires for all four —
-       but the previous picker shipped with three photographs that never loaded, so the
-       insurance stays: wake them off the SECTION as it approaches. lazy -> eager starts
-       the load immediately. */
+    /* insurance kept from the bug this replaced: three of four room photographs once
+       shipped unloaded because their closed cards were clipped to zero area. */
     var wake = new IntersectionObserver(function (es) {
       if (!es.some(function (e) { return e.isIntersecting; })) return;
       list.querySelectorAll('img[loading="lazy"]').forEach(function (im) { im.loading = 'eager'; });
@@ -182,6 +309,7 @@
     var lenis = new Lenis({ lerp: 0.1, wheelMultiplier: 0.9, autoRaf: false });
     lenis.on('scroll', ScrollTrigger.update);
     window.__lenis = lenis;
+    if (root.classList.contains('intro-on')) lenis.stop();
     gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
     gsap.ticker.lagSmoothing(0);
     root.classList.add('lenis');
@@ -189,20 +317,29 @@
 
   /* ---------- the hero wordmark rises, then the lede ---------- */
   var heroWm = document.querySelector('.hero_wm');
-  requestAnimationFrame(function () { if (heroWm) heroWm.classList.add('in'); });
+  requestAnimationFrame(function () {
+    heroGo('wm', function () { if (heroWm) heroWm.classList.add('in'); });
+  });
 
   /* ---------- splits + reveals ---------- */
   function armReveals() {
     document.querySelectorAll('[data-split="lines"]').forEach(splitLines);
     document.querySelectorAll('[data-reveal]').forEach(function (el) {
       if (el.querySelector('.rl')) {
-        if (el.getBoundingClientRect().top <= window.innerHeight * 0.92) { fireSplit(el, 0); return; }
+        if (el.getBoundingClientRect().top <= window.innerHeight * 0.92) {
+          heroGo(el.classList.contains('hero_lede') ? 'lede' : 'v' + (+new Date() + Math.random()),
+                 function () { fireSplit(el, 0); });
+          return;
+        }
         ScrollTrigger.create({ trigger: el, start: 'top 88%', once: true,
           onEnter: function () { fireSplit(el, 0); } });
       } else {
         el.setAttribute('data-armed', '');
         el.classList.add('rev');
-        if (el.getBoundingClientRect().top <= window.innerHeight * 0.92) { el.classList.add('in'); return; }
+        if (el.getBoundingClientRect().top <= window.innerHeight * 0.92) {
+          heroGo('r' + (+new Date() + Math.random()), function () { el.classList.add('in'); });
+          return;
+        }
         ScrollTrigger.create({ trigger: el, start: 'top 88%', once: true,
           onEnter: function () { el.classList.add('in'); } });
       }
@@ -216,6 +353,7 @@
       onEnter: function () { footWm.classList.add('in'); } });
     ScrollTrigger.refresh();
   }
+  ScrollTrigger.addEventListener('refresh', function () { measureGround(); paintGround(); });
   function armAfterLayout() { requestAnimationFrame(function () { requestAnimationFrame(armReveals); }); }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(armAfterLayout);
   else armAfterLayout();

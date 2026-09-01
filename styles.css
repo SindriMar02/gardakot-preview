@@ -16,7 +16,20 @@
   --verm-ink:#C63108;  /* 4.97:1 on cream — every small accent word */
   --hair:rgba(23,18,13,.16); --hair-l:rgba(251,243,234,.22);
 
-  --g-bg:var(--cream); --g-ink:var(--ink); --g-soft:var(--ink-soft); --g-line:var(--hair);
+  /* --night is SCRUBBED 0..1 by scroll position (app.js), and every ground token is a
+     mix along it. One scrubbed value, so the body ground, the opaque nav bar and the
+     text all cross together and cannot drift apart — which is what kept the iOS status
+     bar matching. NOTHING that reads --night may carry a transition: a transition on a
+     scrubbed property restarts a fresh interpolation every frame and fights the scrub.
+     srgb, not oklab, on purpose: both endpoints are low-chroma so the path is the same to
+     the eye, and an srgb mix reads back as rgb() — which lets JS compute the IDENTICAL
+     colour for <meta name="theme-color">, so the iOS status bar tracks the scrub instead
+     of snapping between the two ends. */
+  --night:0;
+  --g-bg:color-mix(in srgb, var(--cream), var(--ink) calc(var(--night) * 100%));
+  --g-ink:color-mix(in srgb, var(--ink), #F4EFE7 calc(var(--night) * 100%));
+  --g-soft:color-mix(in srgb, var(--ink-soft), #A79E92 calc(var(--night) * 100%));
+  --g-line:color-mix(in srgb, var(--hair), var(--hair-l) calc(var(--night) * 100%));
 
   --disp:'Melodrama',ui-serif,Georgia,serif;
   --sans:'Host Grotesk',ui-sans-serif,system-ui,sans-serif;
@@ -26,8 +39,13 @@
   --pad:clamp(1.25rem,4vw,4rem);
   --nav-h:5.5rem;
 }
-body[data-ground="night"]{ --g-bg:var(--ink); --g-ink:#F4EFE7; --g-soft:#A79E92; --g-line:var(--hair-l); }
-body[data-ground="dusk"]{ --g-bg:var(--cream2); }
+/* no color-mix (or no JS): fall straight back to the discrete grounds this replaced */
+@supports not (color: color-mix(in srgb, #000, #fff 50%)){
+  :root{ --g-bg:var(--cream); --g-ink:var(--ink); --g-soft:var(--ink-soft); --g-line:var(--hair); }
+  body[data-ground="night"]{ --g-bg:var(--ink); --g-ink:#F4EFE7; --g-soft:#A79E92; --g-line:var(--hair-l); }
+}
+html:not(.js) :root,html:not(.js) body[data-ground="night"]{ --night:0 }
+html:not(.js) body[data-ground="night"]{ --g-bg:var(--ink); --g-ink:#F4EFE7; --g-soft:#A79E92; --g-line:var(--hair-l); }
 
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0;overflow-x:clip}          /* clip, never hidden: hidden kills sticky */
@@ -37,11 +55,9 @@ body{
   background-color:var(--g-bg); color:var(--g-ink);
   font:400 1.0625rem/1.6 var(--sans);
   -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
-  /* short on purpose: `color` is inherited, so a long transition re-resolves every
-     element for its whole duration. Measured on skyretreat: .9s cost 220ms of style
-     recalc per flip, .12s costs a fraction of that, and a shorter cross-fade also
-     spends less time at the low-contrast midpoint. */
-  transition:background-color .3s var(--ease), color .12s linear;
+  /* NO transition on background/color: both now follow the scrubbed --night, and a
+     transition on a scrubbed property restarts every frame and lags the finger. The
+     old .3s flip is what read as a switch rather than a scroll. */
 }
 body.no-scroll{overflow:hidden}
 img{display:block;max-width:100%}
@@ -510,3 +526,41 @@ html.js .hp_list.rev[data-armed]{transform:none}
   .xcard_view{font-size:.92rem}
   .xcard_face{display:none}
 }
+
+/* ── the opening reveal ───────────────────────────────────────────────────
+   Sequence: the vermilion dot lands, the coastline draws itself around it, then the
+   mark flies to the nav and becomes the logo while the ink curtain retreats DOWNWARD —
+   so the page is uncovered top-first, in reading order, and the hero is already moving
+   as it appears. Both display rules carry `.is-out` as well as `html.intro-on`: an
+   element whose only display comes from the class its own script removes hits
+   display:none on the frame its exit should start, and cuts instead of animating. */
+.intro,.intro_mark{display:none}
+html.intro-on .intro,.intro.is-out{display:block}
+html.intro-on .intro_mark,.intro_mark.is-out{display:block}
+html.intro-on,html.intro-on body{overflow:hidden;height:100%}
+
+.intro{position:fixed;inset:0;z-index:120;background:var(--ink);
+  clip-path:inset(0 0 0 0);
+  transition:clip-path .95s cubic-bezier(.83,0,.17,1)}
+.intro.is-out{clip-path:inset(100% 0 0 0)}
+
+.intro_mark{position:fixed;z-index:121;left:50%;top:50%;
+  transform:translate(-50%,-50%);pointer-events:none;
+  transition:opacity .25s linear}
+.intro_mark.is-gone{opacity:0}
+.intro_mark_in{display:block;transform-origin:50% 50%;
+  transition:transform .95s cubic-bezier(.76,0,.24,1)}
+.intro_mark svg{display:block;width:min(46vw,21rem);height:auto;color:#F4EFE7}
+/* --len is the path's own measured length, written by JS: a hand-guessed dasharray
+   either leaves a gap at the join or finishes the draw early */
+#introCoast{fill:none;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+  stroke-dasharray:var(--len);stroke-dashoffset:var(--len);
+  transition:stroke-dashoffset .8s cubic-bezier(.33,1,.68,1)}
+html.intro-draw #introCoast{stroke-dashoffset:0}
+#introDot{fill:var(--verm);transform-box:fill-box;transform-origin:50% 50%;
+  transform:scale(0);transition:transform .5s cubic-bezier(.34,1.35,.64,1)}
+html.intro-dot #introDot{transform:scale(1)}
+/* the nav mark holds its place but stays invisible until the flown one lands on it */
+html.intro-hold .nav_mark .mk{opacity:0}
+.nav_mark .mk{transition:opacity .25s linear}
