@@ -1,0 +1,520 @@
+/* Garðakot — the Búðir machine, re-skinned. Landing composition from the Mutafova
+   reference. See DESIGN.md; nothing here is invented from scratch.
+   Keyframes and data-attributes prefixed gk- to keep this build isolated. */
+
+@font-face{font-family:'Melodrama';src:url('assets/fonts/Melodrama-Light.woff2') format('woff2');font-weight:300;font-style:normal;font-display:swap}
+@font-face{font-family:'Melodrama';src:url('assets/fonts/Melodrama-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Melodrama';src:url('assets/fonts/Melodrama-Medium.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Host Grotesk';src:url('assets/fonts/HostGrotesk-400.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Host Grotesk';src:url('assets/fonts/HostGrotesk-500.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Host Grotesk';src:url('assets/fonts/HostGrotesk-600.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+
+:root{
+  /* tokens computed in DESIGN.md, not eyeballed */
+  --cream:#FBF3EA; --cream2:#F2E7D9; --ink:#17120D; --ink-soft:#4A4238;
+  --verm:#E8380D;      /* 3.82:1 on cream — LARGE DISPLAY ONLY */
+  --verm-ink:#C63108;  /* 4.97:1 on cream — every small accent word */
+  --hair:rgba(23,18,13,.16); --hair-l:rgba(251,243,234,.22);
+
+  --g-bg:var(--cream); --g-ink:var(--ink); --g-soft:var(--ink-soft); --g-line:var(--hair);
+
+  --disp:'Melodrama',ui-serif,Georgia,serif;
+  --sans:'Host Grotesk',ui-sans-serif,system-ui,sans-serif;
+  --ease:cubic-bezier(.23,1,.32,1);
+  --expo:cubic-bezier(.19,1,.22,1);
+  --house:cubic-bezier(.4,0,.2,1);       /* Búðir house ease, power3.out-equivalent */
+  --pad:clamp(1.25rem,4vw,4rem);
+  --nav-h:5.5rem;
+}
+body[data-ground="night"]{ --g-bg:var(--ink); --g-ink:#F4EFE7; --g-soft:#A79E92; --g-line:var(--hair-l); }
+body[data-ground="dusk"]{ --g-bg:var(--cream2); }
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;overflow-x:clip}          /* clip, never hidden: hidden kills sticky */
+html{scroll-behavior:auto}
+html.lenis,html.lenis body{height:auto}
+body{
+  background-color:var(--g-bg); color:var(--g-ink);
+  font:400 1.0625rem/1.6 var(--sans);
+  -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+  /* short on purpose: `color` is inherited, so a long transition re-resolves every
+     element for its whole duration. Measured on skyretreat: .9s cost 220ms of style
+     recalc per flip, .12s costs a fraction of that, and a shorter cross-fade also
+     spends less time at the low-contrast midpoint. */
+  transition:background-color .3s var(--ease), color .12s linear;
+}
+body.no-scroll{overflow:hidden}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+h1,h2,h3,p,dl,dd,figure{margin:0}
+ul{margin:0;padding:0;list-style:none}
+.wrap{width:min(100% - var(--pad)*2, 96rem);margin-inline:auto}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:1rem;top:1rem;z-index:99;background:var(--verm-ink);color:#fff;padding:.6rem 1rem}
+:focus-visible{outline:2px solid var(--verm-ink);outline-offset:3px}
+.a11y-name{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ── reveals ─────────────────────────────────────────────────────────────── */
+/* the mask needs room BELOW the baseline or every descender is sliced off the
+   bottom of a revealed line; the negative margin keeps layout identical. The rest
+   translate must clear the taller mask: >= 100*(1 + padding/line-height). */
+.rl{display:block;overflow:hidden;padding-bottom:.24em;margin-bottom:-.24em}
+.rl>i{display:block;font-style:inherit;white-space:nowrap}
+.rw{display:inline-block;transform:translateY(128%);will-change:transform}
+html:not(.js) .rw{transform:none}
+.rl.in .rw{transform:none;transition:transform 1.05s var(--expo)}
+.rev{opacity:1;transform:none}
+html.js .rev[data-armed]{opacity:0;transform:translateY(22px)}
+html.js .rev.in{opacity:1;transform:none;transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.rule{display:block;height:1px;background:var(--g-line);transform:scaleX(0);transform-origin:0 50%}
+.rule.in{transform:none;transition:transform 1.1s var(--expo)}
+
+/* ── nav: constant presence, material from the design (mobile-chrome-standard) ── */
+.nav{position:fixed;inset:0 0 auto 0;z-index:58;height:var(--nav-h);
+  transition:height .5s var(--house),background-color .3s var(--ease)}
+body.scrolled .nav{height:3.75rem;background-color:rgba(251,243,234,.92);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--hair)}
+body.scrolled[data-ground="night"] .nav{background-color:rgba(23,18,13,.90);border-bottom-color:var(--hair-l)}
+.nav_in{height:100%;display:flex;align-items:center;justify-content:space-between;gap:2rem;padding-inline:var(--pad)}
+/* ── the mark ─────────────────────────────────────────────────────────────
+   Their logo carried three typefaces, a script, a hard shadow and a filled map.
+   What survives is its one real idea: the island, and a dot where the house is.
+   One typeface, one hairline, one accent point. */
+.mk{display:block;width:1.75rem;height:auto;color:var(--g-ink);flex:none;
+  transition:color .3s var(--ease)}
+.mk--lg{width:3.4rem}
+.nav_mark{display:inline-flex;align-items:center;gap:.62rem}
+.nav_mark_w{font:500 .72rem/1 var(--sans);letter-spacing:.3em;text-transform:uppercase;
+  padding-right:.3em}                                   /* the last tracked letter needs the room back */
+@media (hover:hover) and (pointer:fine){ .nav_mark:hover .mk{color:var(--verm-ink)} }
+
+.foot_lock{display:flex;align-items:center;gap:1.1rem;
+  padding-top:clamp(2rem,6vh,3.4rem)}
+.foot_lock_t{display:grid;gap:.42rem}
+.foot_lock_t b{font:500 .8rem/1 var(--sans);letter-spacing:.3em;text-transform:uppercase;padding-right:.3em}
+.foot_lock_t span{font:400 .64rem/1 var(--sans);letter-spacing:.22em;text-transform:uppercase;color:var(--g-soft)}
+.nav_links{display:flex;gap:clamp(1.2rem,2.6vw,2.6rem);font:500 .75rem/1 var(--sans);letter-spacing:.11em;text-transform:uppercase}
+.nav_links a{transition:color .3s}
+.nav_right{display:flex;align-items:center;gap:clamp(1rem,2.2vw,2rem);font:500 .75rem/1 var(--sans);letter-spacing:.11em;text-transform:uppercase}
+.nav_book{color:var(--verm-ink)}
+.nav_meta{color:var(--g-soft)}
+@media (hover:hover) and (pointer:fine){
+  .nav_links a:hover,.nav_meta:hover{color:var(--verm-ink)}
+}
+.nav_burger{display:none;width:44px;height:44px;align-content:center;gap:.34rem}
+.nav_burger span{display:block;height:1px;width:1.15rem;margin-inline:auto;background:currentColor;transition:transform .4s var(--ease)}
+body.menu-open .nav_burger span:first-child{transform:translateY(.175rem) rotate(45deg)}
+body.menu-open .nav_burger span:last-child{transform:translateY(-.175rem) rotate(-45deg)}
+
+/* ── menu ────────────────────────────────────────────────────────────────── */
+.menu{position:fixed;inset:0;z-index:56;display:grid;background:var(--ink);color:#F4EFE7;
+  opacity:0;visibility:hidden;transition:opacity .45s var(--ease),visibility .45s}
+.menu[hidden]{display:grid}
+body.menu-open .menu{opacity:1;visibility:visible}
+body.menu-open .nav_in{color:#F4EFE7}
+.menu_visual{position:absolute;inset:0;z-index:0}
+.menu_visual img{width:100%;height:100%;object-fit:cover;opacity:.26}
+.menu_visual::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(23,18,13,.9) 0%,rgba(23,18,13,.6) 45%,rgba(23,18,13,.95) 100%)}
+.menu_links{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;
+  gap:clamp(1.6rem,5vh,2.8rem);padding:var(--nav-h) var(--pad) var(--pad)}
+.menu_links li{overflow:hidden}
+.menu_links a{display:block;padding:.1em 0;transform:translateY(105%);
+  transition:transform .8s var(--expo),color .3s}
+body.menu-open .menu_links a{transform:none}
+.menu_links span{font:300 clamp(2.1rem,9vw,4rem)/1.04 var(--disp)}
+.menu_links li:last-child a{color:#FF6A3D}
+.menu_foot{display:grid;gap:.35rem;font-size:.9rem;color:#A79E92}
+
+/* ── HERO — the Mutafova composition ─────────────────────────────────────── */
+.hero{position:relative;padding-top:calc(var(--nav-h) + clamp(2rem,7vh,5rem));padding-bottom:clamp(2rem,6vh,4rem)}
+.hero_head{padding-bottom:clamp(2rem,6vh,4rem)}
+.hero_lede{font:500 clamp(1.15rem,2.05vw,1.9rem)/1.28 var(--sans);letter-spacing:-.01em;
+  text-transform:uppercase;max-width:38rem;margin-left:clamp(0rem,14vw,18rem)}
+.hero_body{display:grid;grid-template-columns:52fr 44fr;gap:clamp(1.5rem,4vw,4rem);align-items:start}
+/* the figure is capped against the VIEWPORT, not just its aspect: an aspect-only box
+   does not shrink as the window gets shorter, so the wordmark was pushed 97–146px
+   below the fold at every desktop size. It crops instead of pushing. */
+.hero_fig{position:relative;overflow:clip;aspect-ratio:4/3.1;max-height:44svh}
+.hero_fig img{width:100%;height:100%;object-fit:cover}
+.hero_side{display:flex;flex-direction:column;gap:clamp(1.6rem,5vh,3rem);padding-top:.4rem}
+.hero_note{font-size:.86rem;line-height:1.65;color:var(--g-soft);max-width:44ch;text-transform:uppercase;letter-spacing:.02em}
+.hero_reach{display:flex;align-items:baseline;justify-content:space-between;gap:1.5rem;
+  border-bottom:1px solid var(--g-ink);padding-bottom:.7rem}
+.hero_tel{font:400 clamp(1rem,1.3vw,1.25rem)/1 var(--sans)}
+.hero_enq{font:500 .78rem/1 var(--sans);letter-spacing:.12em;text-transform:uppercase}
+/* the wordmark crosses the frame, as in the reference */
+.hero_wm{position:relative;z-index:2;margin-top:clamp(-11rem,-9.5vw,-2rem);padding-inline:var(--pad);pointer-events:none}
+.hero_wm_word{display:block;overflow:hidden}
+.hero_wm_word i{display:block;font-style:normal;
+  font:300 min(23vw,30svh)/0.9 var(--disp);color:var(--verm);letter-spacing:-.015em;white-space:nowrap;
+  transform:translateY(104%);will-change:transform}
+html:not(.js) .hero_wm i,.hero_wm.in i{transform:translateY(0)}
+.hero_wm.in i{transition:transform 1.15s var(--expo)}
+.hero_alt{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+
+/* ── rails ───────────────────────────────────────────────────────────────── */
+.rails{padding-block:clamp(4rem,13vh,9rem)}
+.rail{font:300 clamp(2.6rem,8vw,7rem)/1.02 var(--disp);letter-spacing:-.02em}
+.rail b{font-family:var(--sans);font-weight:600;font-size:.42em;letter-spacing:.06em;
+  text-transform:uppercase;vertical-align:.5em;margin-right:.4em}
+.rail em{font-style:italic;color:var(--verm)}
+.rail sup{font:500 .62rem/1 var(--sans);letter-spacing:.16em;color:var(--g-soft);vertical-align:super;margin-left:.5em}
+.rail:nth-child(2){margin-left:7%}
+.rail:nth-child(3){margin-left:14%}
+.rails_note{margin-top:clamp(2rem,6vh,3.5rem);margin-left:auto;max-width:46ch;color:var(--g-soft);font-size:.95rem}
+
+/* ── full-bleed slab ─────────────────────────────────────────────────────── */
+.bleed{position:relative}
+.bleed_fig{position:relative;height:100svh;overflow:clip}   /* svh: vh is the URL-bar-hidden viewport on iOS */
+.bleed_fig img{width:100%;height:100%;object-fit:cover}
+.bleed_chip{position:absolute;left:var(--pad);bottom:clamp(1.5rem,5vh,3rem);
+  display:flex;align-items:baseline;gap:.9rem;color:var(--ink);
+  background:var(--cream);padding:.7rem 1.1rem}
+.bleed_chip--light{background:rgba(23,18,13,.9);color:#F4EFE7}
+.bleed_chip span{font:500 .72rem/1 var(--sans);letter-spacing:.13em;text-transform:uppercase}
+.bleed_chip b{font:400 .78rem/1 var(--disp);color:var(--verm)}
+.bleed_chip--light b{color:#FF6A3D}
+
+/* ── section head ────────────────────────────────────────────────────────── */
+.sechead{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:1rem;
+  padding-top:clamp(3.5rem,10vh,7rem);padding-bottom:clamp(1.6rem,4vh,2.6rem)}
+.sechead .rule{grid-column:1/-1;margin-bottom:1.1rem}
+.sechead_l,.sechead_n{font:500 .72rem/1 var(--sans);letter-spacing:.22em;text-transform:uppercase}
+.sechead_n{color:var(--g-soft)}
+
+/* ── ROOMS — one frame, four views ────────────────────────────────────────
+   Búðir's project-picker, and here it IS the concept: the house is the constant,
+   the window is the variable. Desktop docks every .rshot into the sticky frame and
+   peels between them with clip-path (never a transform — the photograph must not
+   slide, only its mask opens). Below 1024px each shot returns beside its own text
+   and reveals on entry: Búðir's own fork, a plain vertical document. */
+.rooms{padding-bottom:clamp(4rem,12vh,9rem)}
+.rooms_stage{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
+  gap:clamp(2rem,5vw,6rem);align-items:start}
+
+/* the sticky frame */
+.rooms_media{position:sticky;top:calc(var(--nav-h) + 3vh);
+  height:calc(100svh - var(--nav-h) - 9vh);display:grid;
+  grid-template-rows:1fr auto;gap:1.1rem}
+.rooms_frame{position:relative;overflow:clip;background:var(--cream2);min-height:0}
+/* DEFAULT = at home beside its own text. This must be the un-classed state: an
+   <img loading="lazy"> that is display:none at parse never resumes in Chrome, so all
+   four room photographs stayed at naturalWidth 0 on every phone. The frame is what
+   JS opts into, not the other way round. */
+.rshot{position:relative;overflow:clip;background:var(--cream2);
+  aspect-ratio:4/5;max-height:66svh;
+  clip-path:inset(0 0 100% 0);
+  transition:clip-path 1.15s var(--expo)}
+.rshot.is-on{clip-path:inset(0 0 0 0)}
+@media (min-width:1024px){
+  .rooms_stage:not(.is-flat) .rread .rshot{display:none}   /* only the docked copy shows */
+  .rooms_frame .rshot{position:absolute;inset:0;aspect-ratio:auto;max-height:none}
+  .rooms_frame .rshot:nth-of-type(even){clip-path:inset(100% 0 0 0)}  /* alternate the peel */
+  .rooms_frame .rshot.is-on{clip-path:inset(0)}
+}
+.rshot picture{display:block;height:100%}
+.rshot img{width:100%;height:100%;object-fit:cover;
+  transform:scale(1.07);transition:transform 1.6s var(--expo)}
+.rshot.is-on img{transform:scale(1)}
+
+/* the view the active window actually faces, drawn on the frame */
+.rooms_frame::after{content:'';position:absolute;inset:auto 0 0 0;height:38%;z-index:1;
+  background:linear-gradient(to top,rgba(23,18,13,.62),rgba(23,18,13,0));
+  pointer-events:none;opacity:0;transition:opacity .6s var(--ease)}
+.rooms_frame.has-shot::after{opacity:1}      /* no scrim over the bare cream frame */
+.rooms_face{position:absolute;left:0;bottom:0;z-index:2;padding:1.4rem 1.6rem;
+  font:400 clamp(1.5rem,2.6vw,2.6rem)/1 var(--disp);color:#FBF3EA;
+  opacity:0;transition:opacity .6s var(--ease);pointer-events:none}
+.rooms_frame.has-shot .rooms_face{opacity:1}
+.rooms_face i{display:inline-block;font-style:normal;
+  transition:opacity .34s var(--ease),transform .5s var(--expo)}
+.rooms_face.is-out i{opacity:0;transform:translateY(.4em)}
+
+/* ticks: four windows, the open one in the accent */
+.rooms_ticks{display:flex;gap:.4rem}
+.rtick{position:relative;flex:1;padding:.9rem 0 .45rem;text-align:left;
+  font:500 .68rem/1 var(--sans);letter-spacing:.16em;color:var(--g-soft);
+  transition:color .4s var(--ease)}
+.rtick::before{content:'';position:absolute;inset:0 0 auto 0;height:1px;background:var(--g-line)}
+.rtick::after{content:'';position:absolute;inset:0 100% auto 0;height:1px;background:var(--verm-ink);
+  transition:right 1.05s var(--expo)}
+.rtick.is-on{color:var(--verm-ink)}
+.rtick.is-on::after,.rtick.is-past::after{right:0}
+@media (hover:hover) and (pointer:fine){ .rtick:hover{color:var(--g-ink)} }
+
+/* motion off (or no GSAP): the same fork the phone gets, at any width */
+.rooms_stage.is-flat{grid-template-columns:1fr;gap:0}
+.rooms_stage.is-flat .rooms_media{display:none}
+.rooms_stage.is-flat .rread{min-height:0;padding-block:clamp(2.5rem,7vh,4rem);gap:1.4rem}
+.rooms_stage.is-flat .rread .rshot{display:block;clip-path:none}
+.rooms_stage.is-flat .rread_txt{opacity:1;filter:none;max-width:none}
+
+/* the reading column */
+.rooms_read{display:grid}
+.rread{min-height:92svh;display:grid;align-content:center;
+  padding-block:clamp(1rem,4vh,3rem)}
+.rread_txt{max-width:34rem;
+  opacity:.26;filter:blur(1.2px);
+  transition:opacity .7s var(--ease),filter .7s var(--ease)}
+.rread.is-on .rread_txt{opacity:1;filter:blur(0)}
+.rread_txt{position:relative}
+.rread_txt::before{content:'';display:block;height:1px;background:var(--g-line);
+  width:0;margin-bottom:1.6rem;transition:width 1.1s var(--expo) .1s}
+.rread.is-on .rread_txt::before{width:100%}
+.rread_n{display:flex;align-items:baseline;gap:.5rem;margin-bottom:1rem}
+.rread_n i{font:400 clamp(2.6rem,5vw,4.4rem)/1 var(--disp);font-style:normal;color:var(--verm);
+  transition:color .5s var(--ease)}
+.rread.is-on .rread_n i{color:var(--verm)}
+.rread_n span{font:500 .7rem/1 var(--sans);letter-spacing:.2em;color:var(--g-soft)}
+.rread_name{font:300 clamp(2.2rem,4.6vw,3.6rem)/1.02 var(--disp);letter-spacing:-.02em;
+  margin-bottom:.7rem}
+.rread_wing{font:500 .68rem/1.4 var(--sans);letter-spacing:.15em;text-transform:uppercase;
+  color:var(--g-soft);margin-bottom:1.1rem}
+.rread_view{font-size:1.02rem;color:var(--g-soft);margin-bottom:1.8rem}
+.rread .pill{justify-self:start}
+
+.pill{display:inline-block;padding:.72rem 1.5rem;border:1px solid currentColor;border-radius:2rem;
+  font:500 .72rem/1 var(--sans);letter-spacing:.13em;text-transform:uppercase;
+  transition:background-color .4s var(--ease),color .4s var(--ease),border-color .4s var(--ease)}
+@media (hover:hover) and (pointer:fine){
+  .pill:hover{background:var(--verm-ink);border-color:var(--verm-ink);color:#fff}
+}
+
+/* ── THE HOUSE: their photograph, annotated ───────────────────────────────
+   The blend-mode heading that used to sit here said "A home away from home" over a
+   desaturated photo — a caption that fits any house on earth, and a filter that threw
+   away the one asset the brief is built on. Their picture makes the argument by itself
+   once you point at what is already in it. Hotspots: the ZROBIM hero pattern. */
+.houseplan{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
+  gap:clamp(1.8rem,5vw,5rem);align-items:start;padding-top:clamp(1rem,4vh,2.5rem)}
+.hp_fig{position:relative;overflow:visible;align-self:start}
+.hp_fig img{width:100%;height:auto}
+
+.hp_spots{position:absolute;inset:0}
+/* the DOT is the anchor: an opacity-hidden label still occupies layout width, so a
+   flex button centred with translate(-50%) lands half a label away from its object */
+.spot{position:absolute;left:var(--x);top:var(--y);width:9px;height:9px;padding:0;
+  transform:translate(-50%,-50%);
+  opacity:0;transition:opacity .5s var(--ease)}
+.hp_fig.in .spot{opacity:1}
+.hp_fig.in .spot:nth-child(1){transition-delay:.25s}
+.hp_fig.in .spot:nth-child(2){transition-delay:.4s}
+.hp_fig.in .spot:nth-child(3){transition-delay:.55s}
+.hp_fig.in .spot:nth-child(4){transition-delay:.7s}
+.hp_fig.in .spot:nth-child(5){transition-delay:.85s}
+.spot_dot{position:relative;display:block;width:9px;height:9px;border-radius:50%;
+  background:var(--verm);flex:none}
+/* the ring is a composited pseudo-element: an infinite box-shadow spread repaints
+   the whole dot every frame and measurably starves raster */
+.spot_dot::after{content:'';position:absolute;inset:-1px;border-radius:50%;
+  border:1px solid var(--verm);opacity:0;
+  animation:gk-ping 3.2s var(--ease) infinite}
+.spot_l{position:absolute;top:50%;left:calc(100% + .55rem);
+  white-space:nowrap;font:500 .64rem/1 var(--sans);letter-spacing:.13em;
+  /* solid, not frosted: five blurred labels each force their own backdrop root,
+     which stalls raster badly — and a crisp pill reads better over a photograph */
+  text-transform:uppercase;color:#fff;background:rgba(23,18,13,.88);
+  padding:.5rem .7rem;border-radius:1rem;
+  opacity:0;transform:translate(-.4rem,-50%);
+  transition:opacity .35s var(--ease),transform .45s var(--expo)}
+@media (hover:hover) and (pointer:fine){
+  .spot:hover .spot_l,.spot:focus-visible .spot_l{opacity:1;transform:translateY(-50%)}
+  .spot:hover .spot_dot::after{animation:none;opacity:.9;transform:scale(2.1)}
+}
+/* the last two sit near the right edge, so their labels open leftwards */
+.spot[data-spot="3"] .spot_l,.spot[data-spot="4"] .spot_l{
+  left:auto;right:calc(100% + .55rem);transform:translate(.4rem,-50%)}
+@keyframes gk-ping{
+  0%{transform:scale(1);opacity:.55}
+  55%{transform:scale(2.9);opacity:0}
+  100%{transform:scale(2.9);opacity:0}
+}
+
+.hp_side{display:grid;gap:clamp(1.2rem,3vh,2rem);align-content:start;
+  padding-top:clamp(0rem,3vh,2rem)}
+.hp_head{font:300 clamp(1.9rem,3.5vw,3.1rem)/1.08 var(--disp);letter-spacing:-.02em;max-width:17ch}
+/* the list is the labels again, readable without a pointer — and the only version
+   a phone gets, because five tags over one photo is unreadable at 390px */
+/* only the rows travel: the wrapper's own reveal would double the movement */
+html.js .hp_list.rev[data-armed]{transform:none}
+.hp_list{display:grid;border-top:1px solid var(--g-line)}
+.hp_list li{display:flex;gap:1rem;align-items:baseline;padding:.72rem 0;
+  border-bottom:1px solid var(--g-line);font-size:.95rem;color:var(--g-soft);
+  opacity:0;transform:translateY(.55rem);
+  transition:opacity .6s var(--ease),transform .7s var(--expo)}
+.hp_list.in li{opacity:1;transform:none}
+.hp_list.in li:nth-child(2){transition-delay:.07s}
+.hp_list.in li:nth-child(3){transition-delay:.14s}
+.hp_list.in li:nth-child(4){transition-delay:.21s}
+.hp_list.in li:nth-child(5){transition-delay:.28s}
+.hp_list i{font:400 .74rem/1 var(--disp);font-style:normal;color:var(--verm-ink);flex:none}
+
+/* ── the house ───────────────────────────────────────────────────────────── */
+.house_lede{font:400 1.02rem/1.62 var(--sans);color:var(--g-soft);max-width:46ch}
+.house_spec{display:grid;grid-template-columns:1fr 1fr;gap:0 2rem}
+.house_spec>div{display:grid;gap:.15rem;padding:.85rem 0;border-top:1px solid var(--g-line)}
+.house_spec dt{font:500 .68rem/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--g-soft)}
+.house_spec dd{margin:0;font-size:.98rem}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(.6rem,1.6vw,1.2rem);
+  padding-top:clamp(2.5rem,7vh,4.5rem);padding-bottom:clamp(3rem,9vh,6rem)}
+.trio_fig{aspect-ratio:3/4;overflow:clip}
+.trio_fig img{width:100%;height:100%;object-fit:cover}
+
+/* ── around ──────────────────────────────────────────────────────────────── */
+.around{padding-bottom:clamp(3rem,9vh,6rem)}
+.around_grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1.5rem,4vw,4rem);align-items:start}
+.around_list li{display:flex;align-items:baseline;justify-content:space-between;gap:1.5rem;
+  padding:clamp(.9rem,2.2vh,1.3rem) 0;border-bottom:1px solid var(--g-line)}
+.around_list li:first-child{border-top:1px solid var(--g-line)}
+.around_list span{font:300 clamp(1.15rem,2.2vw,1.75rem)/1.15 var(--disp)}
+.around_list em{font-style:normal;font-size:.76rem;letter-spacing:.05em;color:var(--g-soft);text-align:right}
+.around_media{display:grid;grid-template-columns:1fr 1fr;gap:clamp(.6rem,1.6vw,1.2rem)}
+.around_fig{aspect-ratio:3/4;overflow:clip}
+.around_fig img{width:100%;height:100%;object-fit:cover}
+
+/* ── history ─────────────────────────────────────────────────────────────── */
+.history{padding-bottom:clamp(3.5rem,10vh,7rem)}
+.hist_grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1.5rem,4vw,4rem);align-items:center}
+.hist_fig{overflow:clip;aspect-ratio:4/3}
+.hist_fig img{width:100%;height:100%;object-fit:cover}
+.hist_side{display:grid;gap:clamp(1.5rem,4vh,2.5rem);justify-items:start}
+.hist_lede{font:300 clamp(1.3rem,2.4vw,2.05rem)/1.32 var(--disp);max-width:22ch}
+.hist_doc{width:min(60%,20rem);overflow:clip}
+.hist_doc img{width:100%;height:auto}
+
+/* ── book ────────────────────────────────────────────────────────────────── */
+.book{padding-block:clamp(4rem,12vh,8rem)}
+.eyebrow{font:500 .72rem/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--g-soft)}
+.book_h{margin-top:1rem;font:300 clamp(2rem,5.4vw,4.6rem)/1.04 var(--disp);letter-spacing:-.02em;max-width:18ch}
+.book_row{display:grid;grid-template-columns:1fr auto;gap:clamp(2rem,5vw,5rem);
+  align-items:end;margin-top:clamp(2.5rem,7vh,4.5rem)}
+.book_facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 2.5rem}
+.book_facts>div{display:grid;gap:.2rem;padding:.9rem 0;border-top:1px solid var(--g-line)}
+.book_facts dt{font:500 .68rem/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--g-soft)}
+.book_facts dd{margin:0;font-size:1.02rem}
+.book_facts b{font-weight:500;color:#FF6A3D}
+.book_cta{display:grid;gap:.7rem;justify-items:start}
+.btn{display:inline-block;padding:1rem 1.9rem;background:var(--verm);color:#fff;border-radius:2px;
+  font:500 .78rem/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;
+  transition:background-color .4s var(--ease)}
+.btn--ghost{background:none;border:1px solid var(--g-line);color:var(--g-ink)}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover{background:#FF5A2A}
+  .btn--ghost:hover{border-color:var(--g-ink)}
+}
+.book_small{font-size:.82rem;color:var(--g-soft);margin-top:.3rem}
+
+/* ── footer ──────────────────────────────────────────────────────────────── */
+.foot{background:var(--ink);color:#F4EFE7;padding-block:clamp(3rem,8vh,5rem) clamp(1.5rem,4vh,2.5rem)}
+.foot_grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem}
+.foot_k{font:500 .68rem/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:#A79E92;margin-bottom:.8rem}
+.foot_addr{font-style:normal;line-height:1.7}
+.foot_col a{display:block;line-height:1.7;color:#F4EFE7}
+.foot_p{line-height:1.7}
+@media (hover:hover) and (pointer:fine){ .foot_col a:hover{color:#FF6A3D} }
+.foot_wm{margin-block:clamp(1.6rem,5vh,3rem) clamp(1.5rem,4vh,2.5rem);overflow:hidden}
+.foot_wm_word{display:block;overflow:hidden}
+.foot_wm_word i{display:block;font-style:normal;font:300 min(21vw,16rem)/0.86 var(--disp);
+  color:#F4EFE7;letter-spacing:-.02em;white-space:nowrap;transform:translateY(104%)}
+.foot_wm.in i{transform:translateY(0);transition:transform 1s var(--expo)}
+.foot_legal{display:flex;align-items:flex-end;justify-content:space-between;gap:2rem;
+  padding-top:1.4rem;border-top:1px solid var(--hair-l)}
+.foot_legal p{font-size:.74rem;line-height:1.6;color:#8E857A;max-width:70ch}
+.foot_credit{display:inline-flex;align-items:center;opacity:.85;transition:opacity .3s;flex:none}
+@media (hover:hover) and (pointer:fine){ .foot_credit:hover{opacity:1} }
+
+/* ── cursor (Búðir's, in this build's accent) ────────────────────────────── */
+/* NO mix-blend-difference: #E8380D differenced against the cream ground resolves to
+   rgb(19,187,221), a teal dot. Vermilion reads on cream, on ink and on the photographs. */
+.cursor{position:fixed;top:0;left:0;z-index:90;pointer-events:none;
+  display:none;will-change:transform}
+.cursor i{display:block;width:.8rem;height:.8rem;border-radius:50%;background:var(--verm);
+  transform:translate(-50%,-50%)}
+@media (hover:hover) and (pointer:fine){ html.js .cursor{display:block} }
+
+/* ── responsive ──────────────────────────────────────────────────────────── */
+@media (max-width:1023px){
+  :root{--nav-h:4.5rem}
+  .nav_links,.nav_right{display:none}
+  .nav_burger{display:grid}
+  /* iOS tints the status bar from the pixels at the top edge once you scroll, not from
+     theme-color. A 90%-ink bar with a 12px backdrop blur over a bright bedroom photo
+     composites to mid-grey, so the chrome read grey above an ink page. Opaque, no blur:
+     the strip is now exactly --g-bg, and the two edges agree. */
+  body.scrolled .nav,
+  body.scrolled[data-ground="night"] .nav{background-color:var(--g-bg);
+    -webkit-backdrop-filter:none;backdrop-filter:none}
+  .hero_lede{margin-left:0;max-width:none}
+  /* the wordmark has to be ON the landing screen, not below the contact block:
+     display:contents lifts the figure and the side column out of .hero_body so the
+     wordmark can be ordered between them and cross the photograph, as in the
+     reference. The lifted children carry .wrap's own measure, since contents drops it. */
+  .hero{display:flex;flex-direction:column}
+  .hero_head{order:1}
+  .hero_body{display:contents}
+  .hero_fig{order:2;aspect-ratio:4/3.4;max-height:none;width:min(100% - var(--pad)*2,96rem);margin-inline:auto}
+  .hero_wm{order:3;margin-top:clamp(-3.5rem,-8vw,-1.5rem)}
+  .hero_side{order:4;width:min(100% - var(--pad)*2,96rem);margin-inline:auto;
+    padding-top:clamp(1.4rem,4vh,2.4rem)}
+  .hero_wm_word i{font-size:min(19vw,15svh)}
+  /* 13vh top AND bottom left ~124px of dead cream above the slab on a 956pt phone */
+  .rails{padding-block:clamp(3rem,9vh,5rem) clamp(1.75rem,4vh,2.5rem)}
+  .rail{font-size:clamp(2.6rem,12vw,7rem)}
+  .rail:nth-child(2){margin-left:4%}
+  .rail:nth-child(3){margin-left:8%}
+  .rails_note{margin-left:0;margin-top:clamp(1.5rem,4vh,2.5rem)}
+  .around_grid,.hist_grid,.book_row{grid-template-columns:1fr}
+  /* stacked section padding left ~170pt of dead ground between beats on a phone */
+  .history{padding-bottom:clamp(2rem,5vh,3rem)}
+  .book{padding-block:clamp(2.5rem,7vh,4rem)}
+  .house{padding-bottom:clamp(1rem,3vh,2rem)}
+  .book_row{align-items:start;gap:2rem}
+  .houseplan{grid-template-columns:1fr;gap:1.8rem}
+  .hp_spots{display:none}                      /* five tags over one photo is mush at 390px */
+  .trio{grid-template-columns:1fr 1fr}
+  .trio_fig:first-child{grid-column:1/-1;aspect-ratio:16/10}
+  .foot_grid{grid-template-columns:1fr 1fr}
+  .foot_legal{flex-direction:column;align-items:flex-start;gap:1.2rem}
+  .bleed_fig{height:74svh}
+  /* Búðir's own fork: below 1024 the picker is a plain vertical document. The shot
+     moves back beside its own text (JS moves the node — no second download). */
+  .rooms_stage{grid-template-columns:1fr;gap:0}
+  .rooms_media{display:none}
+  .rread{min-height:0;padding-block:clamp(2.5rem,7vh,4rem);gap:1.4rem}
+
+  .rread_txt{opacity:1;filter:none;max-width:none}
+  .rread_name{margin-bottom:.5rem}
+  .rread_view{margin-bottom:1.4rem}
+}
+@media (max-width:640px){
+  .foot_grid{grid-template-columns:1fr;gap:1.6rem}
+  .house_spec,.book_facts{grid-template-columns:1fr}
+  .around_media{grid-template-columns:1fr 1fr}
+}
+
+/* ── touch: every control reaches the 44pt floor on a coarse pointer ─────── */
+@media (pointer:coarse){
+  /* the 44pt floor, measured not assumed: the mark's box is the SVG's own 100:65
+     aspect, so a 1.75rem wide island is only 18px tall until it is given a height */
+  .nav_mark,.hero_tel,.hero_enq,.foot_credit{min-height:44px;display:inline-flex;align-items:center}
+  /* flex, NOT inline-flex: these are stacked rows in a grid column and inline-flex
+     ran the address and the phone number together on one line */
+  .foot_col a,.menu_foot a{min-height:44px;display:flex;align-items:center}
+  .menu_links a{padding-block:.7rem}
+  .pill{padding:1rem 1.7rem}
+  .btn{padding:1.1rem 1.9rem}
+
+  .around_list li{padding-block:1.1rem}
+
+
+}
+
+@media (prefers-reduced-motion:reduce){
+  .rw,.hero_wm i,.foot_wm i{transform:none !important}
+  .rev,[data-frame] img,.spot,.hp_list li{opacity:1 !important;transform:none !important}
+  .spot_dot::after{animation:none !important;opacity:0 !important}
+  .rule{transform:none !important}
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
