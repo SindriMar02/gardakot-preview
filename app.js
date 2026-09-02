@@ -353,33 +353,66 @@
       return false;
     }
 
+    /* Once an arrival is chosen, only a WINDOW of checkouts is legal: no earlier than
+       start+MIN_STAY, and no later than the first taken night after start — because that
+       night is the last legal checkout (you leave the morning it begins). Outside that
+       window every click used to be refused with a message, which is how a picker ends up
+       feeling broken: on a 2 Sep arrival with the 4th taken, the 3rd failed the minimum
+       and everything from the 5th crossed the 4th, so nothing the guest could see worked.
+       The window is now disabled in the grid, so there is nothing left to refuse. */
+    function checkoutWindow(from) {
+      var min = addD(from, MIN_STAY), max = null;
+      for (var d = addD(from, 1), i = 0; i < 400; d = addD(d, 1), i++) {
+        if (taken(d)) { max = d; break; }
+      }
+      if (!max) max = addD(from, 400);
+      return (max < min) ? null : { min: min, max: max };
+    }
+
     function pick(day) {
       if (day < today) return;
       if (taken(day) && (!start || end)) {
         note(fmtLong(day) + ' is already taken. The nights in grey are booked.', true); return;
       }
-      if (!start || (start && end)) { start = day; end = null; note('Now pick your departure.'); render(); return; }
-      if (day <= start) { start = day; end = null; note('Now pick your departure.'); render(); return; }
+      if (!start || (start && end) || day <= start) {
+        var w = checkoutWindow(day);
+        if (!w) {
+          /* say it at the moment of choosing, not after five refused clicks */
+          note(fmtLong(addD(day, 1)) + ' is already booked, so a ' + MIN_STAY
+             + '-night stay cannot start on ' + fmtLong(day) + '. Try a later arrival.', true);
+          start = null; end = null; hover = null; paint(); return;
+        }
+        start = day; end = null; hover = null;
+        note('Now pick your departure — ' + fmtLong(w.min) + ' at the earliest.');
+        paint(); return;
+      }
       if (crosses(start, day)) {
-        note('There is a booked night inside those dates. Pick a checkout before it, or start later.', true); render(); return;
+        note('There is a booked night inside those dates. Pick a checkout before it, or start later.', true); paint(); return;
       }
       if (nights(start, day) < MIN_STAY) {
-        note('The minimum stay is ' + MIN_STAY + ' nights, so the earliest checkout is ' + fmtLong(addD(start, MIN_STAY)) + '.', true); render(); return;
+        note('The minimum stay is ' + MIN_STAY + ' nights, so the earliest checkout is ' + fmtLong(addD(start, MIN_STAY)) + '.', true); paint(); return;
       }
-      end = day; note('Send these dates and Eva Dögg answers with a confirmation.'); render();
+      end = day; hover = null; note('Send these dates and Eva Dögg answers with a confirmation.'); paint();
     }
 
-    function render() {
-      var frag = document.createDocumentFragment();
-      /* the range is only a continuous bar once it HAS two ends */
-      var pe = (start && !end && hover && hover > start) ? hover : null;
-      if (end || pe) grids.setAttribute('data-range', ''); else grids.removeAttribute('data-range');
+    /* BUILD ONCE, THEN ONLY REPAINT.
+       The first version rebuilt the whole grid inside render(), and render() ran on
+       hover. So moving the mouse onto a day after choosing an arrival destroyed the very
+       button being pressed, between mousedown and mouseup — no click event ever fired and
+       the checkout could not be chosen at all with a real mouse. (Gating hover to fine
+       pointers had fixed the touch symptom and left the desktop one.) Nodes are now
+       created once per month; hover and selection only toggle classes on them. */
+    var cells = [];
 
+    function build() {
+      var frag = document.createDocumentFragment();
+      cells = [];
       for (var mi = 0; mi < MONTHS_SHOWN; mi++) {
         var m = addM(month, mi);
         var wrap = document.createElement('div');
         wrap.className = 'bp_grid' + (mi ? ' bp_grid--2' : '');
-        var dows = document.createElement('div'); dows.className = 'bp_dows'; dows.setAttribute('aria-hidden', 'true');
+        var dows = document.createElement('div');
+        dows.className = 'bp_dows'; dows.setAttribute('aria-hidden', 'true');
         WD.forEach(function (w) { var e = document.createElement('span'); e.textContent = w.slice(0, 1); dows.appendChild(e); });
         wrap.appendChild(dows);
         var days = document.createElement('div');
@@ -390,37 +423,58 @@
         /* always six rows, or the panel jumps height when you page months */
         for (var i = 0; i < 42; i++) {
           var d = addD(first, i - lead);
-          var inMonth = d.getMonth() === m.getMonth();
-          var b = document.createElement('button');
-          b.type = 'button'; b.className = 'bp_day';
-          var sp = document.createElement('span'); sp.textContent = d.getDate(); b.appendChild(sp);
-          if (!inMonth) { b.classList.add('bp_day--out'); b.disabled = true; b.tabIndex = -1; }
-          else {
-            var past = d < today, tk = taken(d);
-            if (past) { b.disabled = true; }
-            else if (tk) { b.classList.add('bp_day--taken'); }
-            var to = end || pe;
-            if (same(d, start)) b.classList.add('bp_day--in');
-            else if (to && same(d, to)) b.classList.add('bp_day--out2');
-            else if (start && to && d > start && d < to) b.classList.add('bp_day--mid');
-            b.setAttribute('aria-label', fmtLong(d) + (tk ? ', booked' : past ? ', past' : ''));
-            (function (day) {
-              b.addEventListener('click', function () { pick(day); });
-              /* FINE POINTERS ONLY. On touch, pointerenter fires as the finger lands, and
-                 render() rebuilds the whole grid — which removes the very button that is
-                 mid-tap, so its click never arrives and the second date could not be
-                 chosen at all on a phone. Hover preview is a mouse affordance anyway. */
-              if (finePointer) {
-                b.addEventListener('pointerenter', function () { if (start && !end) { hover = day; render(); } });
-              }
-            })(d);
-          }
-          days.appendChild(b);
+          var el = document.createElement('button');
+          el.type = 'button'; el.className = 'bp_day';
+          var sp = document.createElement('span'); sp.textContent = d.getDate();
+          el.appendChild(sp);
+          var rec = { el: el, date: d, inMonth: d.getMonth() === m.getMonth() };
+          cells.push(rec);
+          (function (day, inMonth) {
+            el.addEventListener('click', function () { if (inMonth) pick(day); });
+            if (finePointer) {
+              el.addEventListener('pointerenter', function () {
+                if (inMonth && start && !end && !el.disabled) { hover = day; paint(); }
+              });
+            }
+          })(d, rec.inMonth);
+          days.appendChild(el);
         }
         wrap.appendChild(days);
         frag.appendChild(wrap);
       }
-      grids.textContent = ''; grids.appendChild(frag);
+      grids.textContent = '';
+      grids.appendChild(frag);
+    }
+
+    function paint() {
+      var win = (start && !end) ? checkoutWindow(start) : null;
+      var pe = (start && !end && hover && hover > start) ? hover : null;
+      var to = end || pe;
+      /* the range only reads as one continuous bar once it HAS two ends; a lone
+         check-in stays a full disc rather than half a pill pointing at nothing */
+      if (to) grids.setAttribute('data-range', ''); else grids.removeAttribute('data-range');
+
+      cells.forEach(function (c) {
+        var el = c.el, d = c.date, cl = el.classList;
+        cl.toggle('bp_day--out', !c.inMonth);
+        if (!c.inMonth) { el.disabled = true; el.tabIndex = -1; cl.remove('bp_day--taken', 'bp_day--in', 'bp_day--out2', 'bp_day--mid'); return; }
+        var past = d < today, tk = taken(d);
+        var off = past;
+        if (win) off = off || d < win.min || d > win.max;      // choosing a checkout
+        else off = off || tk;                                   // choosing an arrival
+        el.disabled = off; el.tabIndex = off ? -1 : 0;
+        cl.toggle('bp_day--off', off && !past && !tk);
+        /* While a departure is being chosen the cell no longer means "a night you book";
+           it means "the morning you leave". The last legal checkout IS the first taken
+           night, so striking it through and dimming it made the one date that completes
+           the stay look unavailable. Inside the window, nothing is struck. */
+        cl.toggle('bp_day--taken', !past && tk && !win);
+        cl.toggle('bp_day--in', same(d, start));
+        cl.toggle('bp_day--out2', !!to && same(d, to));
+        cl.toggle('bp_day--mid', !!(start && to && d > start && d < to));
+        el.setAttribute('aria-label', fmtLong(d) + (tk ? ', booked' : past ? ', past' : ''));
+        el.setAttribute('aria-pressed', String(same(d, start) || (!!to && same(d, to))));
+      });
 
       var wide = window.matchMedia('(min-width: 1024px)').matches;
       var m2 = addM(month, 1);
@@ -454,12 +508,14 @@
       go.textContent = start && end ? 'Request these dates' : 'Send an enquiry';
     }
 
+    function render() { build(); paint(); }
+
     prev.addEventListener('click', function () { month = addM(month, -1); render(); });
     next.addEventListener('click', function () { month = addM(month, 1); render(); });
-    minus.addEventListener('click', function () { if (guests > 1) { guests--; render(); } });
-    plus.addEventListener('click', function () { if (guests < SLEEPS) { guests++; render(); } });
-    if (finePointer) grids.addEventListener('pointerleave', function () { if (hover) { hover = null; render(); } });
-    window.addEventListener('resize', render);
+    minus.addEventListener('click', function () { if (guests > 1) { guests--; paint(); } });
+    plus.addEventListener('click', function () { if (guests < SLEEPS) { guests++; paint(); } });
+    if (finePointer) grids.addEventListener('pointerleave', function () { if (hover) { hover = null; paint(); } });
+    window.addEventListener('resize', paint);   // the second month is hidden by CSS, not rebuilt
     render();
   })();
 

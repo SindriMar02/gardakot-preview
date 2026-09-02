@@ -615,6 +615,9 @@ html.intro-hold .hero_wm{opacity:0}
 .bp_day--out{visibility:hidden}
 .bp_day--taken{color:rgba(23,18,13,.3);cursor:not-allowed;text-decoration:line-through;
   text-decoration-thickness:1px}
+/* out of the legal checkout window: dimmed and unclickable, but NOT struck — it is not
+   booked, it is simply not a legal departure for the arrival that is chosen */
+.bp_day--off{color:rgba(23,18,13,.22);cursor:default}
 /* the bar is painted on ::before at inset 2px 0 so the row reads as one continuous
    object; the caps switch on data-range so a lone check-in stays a full disc */
 /* NO z-index:-1 here. .bp_day is position:relative with z-index:auto, so it creates no
