@@ -422,6 +422,8 @@ html.js .hp_list.rev[data-armed]{transform:none}
 /* ── cursor (Búðir's, in this build's accent) ────────────────────────────── */
 /* NO mix-blend-difference: #E8380D differenced against the cream ground resolves to
    rgb(19,187,221), a teal dot. Vermilion reads on cream, on ink and on the photographs. */
+.cursor{opacity:0;transition:opacity .2s linear}
+.cursor.is-live{opacity:1}
 .cursor{position:fixed;top:0;left:0;z-index:90;pointer-events:none;
   display:none;will-change:transform}
 .cursor i{display:block;width:.8rem;height:.8rem;border-radius:50%;background:var(--verm);

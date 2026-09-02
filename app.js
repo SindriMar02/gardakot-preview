@@ -636,7 +636,13 @@
     if (!el) return;
     var x = window.innerWidth / 2, y = window.innerHeight / 2, tx = x, ty = y;
     var setX = gsap.quickSetter(el, 'x', 'px'), setY = gsap.quickSetter(el, 'y', 'px');
-    window.addEventListener('pointermove', function (e) { tx = e.clientX; ty = e.clientY; }, { passive: true });
+    /* Do not paint until the pointer has actually moved. Parked at the viewport centre it
+       reads as a stray dot floating in the middle of the composition, which is exactly how
+       it turned up in the outreach screenshot. */
+    window.addEventListener('pointermove', function (e) {
+      tx = e.clientX; ty = e.clientY;
+      if (!el.classList.contains('is-live')) { x = tx; y = ty; setX(x); setY(y); el.classList.add('is-live'); }
+    }, { passive: true });
     gsap.ticker.add(function () {
       x += (tx - x) * 0.2; y += (ty - y) * 0.2;
       setX(x); setY(y);
